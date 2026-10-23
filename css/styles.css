@@ -1,0 +1,542 @@
+        :root {
+            /* --- NIGHT MODE (default) color palette --- */
+            --bg-page: #0d0e12;
+            --text-primary: #eee;
+            --text-muted: #8892b0;
+            --accent: #ffd700;
+            --accent-text-on-fill: #0d1321;
+            --value-color: #fff;
+            --panel-bg: rgba(13, 19, 33, 0.92);
+            --panel-bg-hud: rgba(13, 19, 33, 0.85);
+            --panel-border: rgba(255, 215, 0, 0.15);
+            --panel-border-hud: rgba(255, 215, 0, 0.2);
+            --input-bg: rgba(20, 30, 55, 0.8);
+            --input-border: rgba(255, 215, 0, 0.25);
+            --btn-bg: rgba(255, 215, 0, 0.1);
+            --btn-active-bg: rgba(255, 215, 0, 0.25);
+        }
+
+        body.day-mode {
+            /* --- DAY MODE color palette --- */
+            --bg-page: #eef5ea;
+            --text-primary: #1c2e18;
+            --text-muted: #5c6b58;
+            --accent: #2d6a24;
+            --accent-text-on-fill: #ffffff;
+            --value-color: #1c2e18;
+            --panel-bg: rgba(255, 255, 255, 0.92);
+            --panel-bg-hud: rgba(255, 255, 255, 0.85);
+            --panel-border: rgba(45, 106, 36, 0.25);
+            --panel-border-hud: rgba(45, 106, 36, 0.3);
+            --input-bg: rgba(255, 255, 255, 0.85);
+            --input-border: rgba(45, 106, 36, 0.3);
+            --btn-bg: rgba(45, 106, 36, 0.1);
+            --btn-active-bg: rgba(45, 106, 36, 0.25);
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body, html {
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background-color: var(--bg-page);
+            font-family: 'Inter', sans-serif;
+            color: var(--text-primary);
+        }
+
+        /* Full Screen Map Viewport - ABSOLUTELY NO SCROLLING */
+        #app-container {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+            /* dvh accounts for mobile browser chrome (address bar) so the bottom
+               drawer never ends up positioned below the real visible viewport */
+            height: 100dvh;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        #map-canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 1;
+            background-color: #0b111e;
+        }
+
+        /* Safe Zones for modern notches */
+        :root {
+            --safe-top: env(safe-area-inset-top, 0px);
+            --safe-bottom: env(safe-area-inset-bottom, 0px);
+        }
+
+        /* DUAL COLLAPSIBLE DRAWERS */
+        .drawer {
+            position: absolute;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 92%;
+            max-width: 480px;
+            background: var(--panel-bg);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid var(--panel-border);
+            border-radius: 16px;
+            z-index: 10;
+            transition: all 0.3s cubic-bezier(0.25, 1, 0.5, 1);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+        }
+
+        /* TOP TELEMETRY DRAWER */
+        #top-drawer {
+            top: calc(12px + var(--safe-top));
+        }
+
+        #top-drawer.collapsed {
+            transform: translate(-50%, -10px);
+        }
+
+        .telemetry-summary {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0 16px 4px 16px;
+        }
+
+        .telemetry-summary .main-readout {
+            font-family: 'Antonio', sans-serif;
+            font-size: 22px;
+            color: var(--accent);
+            letter-spacing: 0.5px;
+        }
+
+        .telemetry-summary .sub-readout {
+            font-size: 11px;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .telemetry-details {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.3s ease-out;
+            border-top: 0px solid rgba(255, 255, 255, 0.05);
+        }
+
+        #top-drawer.expanded .telemetry-details {
+            max-height: 260px;
+            border-top: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .grid-3x2 {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 12px;
+            padding: 8px 16px 16px 16px;
+        }
+
+        .telemetry-card {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .telemetry-label {
+            font-size: 9px;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 2px;
+        }
+
+        .telemetry-value {
+            font-family: 'Antonio', sans-serif;
+            font-size: 18px;
+            color: var(--value-color);
+        }
+
+        /* TAKEOFF / LANDING CUTSCENE CARD */
+        #cutscene-card {
+            position: fixed;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            height: 50vh;
+            background: #2e5a27; /* grass */
+            z-index: 50; /* above #bottom-drawer (z-index:10) -- covers it entirely while playing */
+            overflow: hidden;
+            display: none; /* toggled to 'block' by playCutscene() */
+        }
+        #cutscene-card.active { display: block; }
+
+        #cutscene-blob-canvas {
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            width: 100%; height: 100%;
+            pointer-events: none;
+        }
+
+        #cutscene-runway {
+            position: absolute;
+            /* left/width/height are all driven every frame in JS -- this is a
+               FINITE strip now (bounded by the two runway-end markers), not
+               an always-full-width bar. Where it doesn't cover, the grass
+               background shows through naturally -- no separate "draw grass
+               after the runway ends" logic needed anywhere. */
+            top: 60%;
+            background-color: #757575;
+            transform: translateY(-50%);
+            overflow: hidden;
+            opacity: 0; /* toggled visible only once the runway should be shown at all */
+        }
+        #cutscene-runway.visible { opacity: 1; }
+
+        #cutscene-runway-dashes {
+            position: absolute;
+            top: 50%;
+            left: 0;
+            width: 100%;
+            height: 4px; /* BUG FIX: was 100% of the 60px strip, making the
+                            whole runway alternate solid black/white bars
+                            (zebra-crossing look) instead of a thin dashed
+                            centerline on solid black pavement */
+            transform: translateY(-50%);
+            /* background-position is set ONCE (not scrolled per-frame anymore)
+               -- now that #cutscene-runway's own left/width are what move
+               every frame, the dash pattern just rides along with its
+               container for free, like a rigid strip. Dash length is sized
+               relative to the plane's rendered wingspan at runtime. */
+        }
+
+        .cutscene-runway-marker {
+            position: absolute;
+            top: 60%; /* matches #cutscene-runway and #cutscene-plane's vertical band -- markers are now siblings of the strip, not nested children, so this must reference the card directly */
+            transform: translateY(-50%);
+            font-weight: bold;
+            color: #ffffff;
+            z-index: 1;
+            white-space: nowrap;
+            display: none; /* shown once positioned by JS */
+        }
+
+        #cutscene-plane {
+            position: absolute;
+            top: 60%;
+            left: 0%; /* driven every frame in JS */
+            font-size: 32px; /* base size at 1.0x scale; JS applies further scale via transform */
+            transform: translate(-50%, -50%);
+            will-change: transform, left;
+            z-index: 2; /* must paint above the runway markers (z-index:1) -- the plane sits ON the runway, not under it */
+        }
+
+
+        #bottom-drawer {
+            bottom: var(--safe-bottom);
+        }
+
+        #bottom-drawer.collapsed {
+            transform: translate(-50%, 5px);
+        }
+
+        .controls-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0 16px 4px 16px;
+        }
+
+        .controls-header h2 {
+            font-size: 14px;
+            color: var(--accent);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .controls-content {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.3s ease-out;
+            border-top: 0px solid rgba(255, 255, 255, 0.05);
+        }
+
+        #bottom-drawer.expanded .controls-content {
+            max-height: 320px;
+            border-top: 1px solid rgba(255, 255, 255, 0.05);
+            padding: 8px 16px 16px 16px;
+            overflow-y: auto;
+        }
+
+        /* Inputs & Controls styling */
+        .input-group {
+            margin-bottom: 8px;
+        }
+
+        .input-label {
+            font-size: 10px;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 4px;
+            display: block;
+        }
+
+        .tuning-row {
+            display: grid;
+            grid-template-columns: 1fr 3fr auto;
+            align-items: center;
+            gap: 6px;
+            margin-top: 4px;
+            font-size: 11px;
+        }
+        .tuning-row span.tuning-label { color: var(--text-muted); white-space: nowrap; }
+        .tuning-row span.tuning-value { color: var(--value-color); text-align: right; min-width: 32px; }
+        .tuning-row input[type="range"] { width: 100%; }
+
+        .daynight-toggle {
+            position: relative;
+            display: flex;
+            background: rgba(20, 30, 55, 0.8); /* fixed regardless of day/night theme -- only the highlight below should ever change; previously used var(--input-bg), which flips to near-white in day mode and made the toggle unreadable */
+            border: 1px solid var(--input-border);
+            border-radius: 999px;
+            padding: 3px;
+            width: 100%;
+            max-width: 180px;
+        }
+        .daynight-toggle-highlight {
+            position: absolute;
+            top: 3px; bottom: 3px; left: 3px;
+            width: calc(50% - 3px);
+            background: #ffffff;
+            border-radius: 999px;
+            transition: transform 0.2s ease;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.35);
+        }
+        .daynight-toggle.night .daynight-toggle-highlight {
+            transform: translateX(100%);
+        }
+        .daynight-toggle-option {
+            position: relative;
+            z-index: 1;
+            flex: 1;
+            background: none;
+            border: none;
+            padding: 7px 0;
+            font-size: 17px;
+            line-height: 1;
+            cursor: pointer;
+            text-align: center;
+        }
+
+        select, input, button {
+            width: 100%;
+            background: var(--input-bg);
+            border: 1px solid var(--input-border);
+            border-radius: 8px;
+            color: var(--text-primary);
+            padding: 10px 12px;
+            font-size: 13px;
+            font-family: inherit;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+
+        select:focus, input:focus {
+            border-color: var(--accent);
+        }
+
+        .coordinate-inputs {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+        }
+
+        .toggle-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+            margin-top: 4px;
+        }
+
+        .btn {
+            background: var(--btn-bg);
+            color: var(--accent);
+            font-weight: 600;
+            cursor: pointer;
+            border: 1px solid var(--accent);
+            transition: all 0.2s;
+        }
+
+        .btn:active {
+            background: var(--btn-active-bg);
+            transform: scale(0.98);
+        }
+
+        .btn-disabled, .btn:disabled {
+            opacity: 0.35;
+            color: #888;
+            border-color: #666;
+            cursor: not-allowed;
+        }
+        .btn-disabled:active, .btn:disabled:active {
+            transform: none; /* no press feedback while disabled */
+        }
+
+        .btn.active {
+            background: var(--accent);
+            color: var(--accent-text-on-fill);
+        }
+
+        /* FLOATING HUD WIDGETS */
+        .hud-widget {
+            position: absolute;
+            z-index: 5;
+            background: var(--panel-bg-hud);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            border: 1px solid var(--panel-border-hud);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.4);
+        }
+
+        /* Compass Widget */
+        #compass-widget {
+            top: calc(115px + var(--safe-top));
+            right: 16px;
+            width: 32px;
+            height: 32px;
+            transition: transform 0.1s linear;
+            cursor: pointer;
+        }
+
+        #compass-rose {
+            position: relative;
+            width: 100%;
+            height: 100%;
+        }
+
+        /* Always-North Arrow inside Widget (red ➢ glyph, rotates to indicate North) */
+        #compass-arrow {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            font-size: 20px;
+            line-height: 1;
+            color: #ff3b30;
+            transform-origin: center;
+            /* base transform set/updated fully in JS (translate + rotate together) */
+        }
+
+        /* Small label under the compass showing current mode */
+        #compass-mode-label {
+            position: absolute;
+            top: calc(115px + 34px + var(--safe-top));
+            right: 12px;
+            font-size: 8px;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            z-index: 5;
+            pointer-events: none;
+        }
+
+        /* Reset view button, positioned under the compass widget */
+        .zoom-controls {
+            position: absolute;
+            top: calc(115px + 34px + 18px + var(--safe-top));
+            right: 16px;
+            z-index: 5;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .zoom-btn {
+            width: 42px;
+            height: 42px;
+            border-radius: 50%;
+            background: var(--panel-bg-hud);
+            border: 1px solid var(--input-border);
+            color: var(--accent);
+            font-size: 20px;
+            font-weight: bold;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.4);
+            cursor: pointer;
+        }
+
+        /* Prevent system zooming on iOS double tap */
+        .zoom-btn, select, button {
+            touch-action: manipulation;
+        }
+
+        /* --- LOADING SCREEN --- */
+        #loader-overlay {
+            position: fixed;
+            inset: 0;
+            background: radial-gradient(circle at center, #0e172a 0%, #050811 100%);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 9999;
+            transition: opacity 0.8s ease, visibility 0.8s;
+        }
+
+        #loader-overlay.fade-out {
+            opacity: 0;
+            visibility: hidden;
+            pointer-events: none;
+        }
+
+        .load-status-container {
+            margin-top: 24px;
+            text-align: center;
+            letter-spacing: 0.15em;
+        }
+
+        .load-status-title {
+            font-size: 1.4rem;
+            font-weight: 700;
+            color: #e2e8f0;
+            text-transform: uppercase;
+            margin-bottom: 6px;
+        }
+
+        .load-status-text {
+            font-size: 0.8rem;
+            color: #38bdf8;
+            font-family: monospace;
+            text-transform: uppercase;
+        }
+
+        .load-progress-track {
+            width: 220px;
+            height: 3px;
+            background: rgba(56, 189, 248, 0.15);
+            border-radius: 3px;
+            margin: 16px auto 0;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .load-progress-bar {
+            width: 0%;
+            height: 100%;
+            background: linear-gradient(90deg, #0284c7, #38bdf8);
+            box-shadow: 0 0 10px #38bdf8;
+            transition: width 0.1s linear;
+        }
