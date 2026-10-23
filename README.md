@@ -149,10 +149,6 @@ Ideas and known gaps with no committed design yet. Resolved, built, dropped or s
 6. **Track-Up mode never gets the idle-snapshot caching:** a limitation,
    not a regression
 
-### Status unknown (can't confirm either way)
-7. **Plane icon reading the same variable as the Flight Info lat/lon:**
-   in the handoff doc's old queue. I can't tell whether it was ever built.
-
 ### Surfaced later
 9. **Installable app ("Add to Home Screen"):** split out of the offline-cache
    idea. Needs a web app manifest (name, theme color, standalone display) and
