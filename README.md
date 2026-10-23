@@ -108,7 +108,6 @@ Jon's request: stop downloading the fonts from Google Fonts on every launch. The
 - Test plan: load the page with every external host blocked and confirm there are zero requests leaving the site and zero failed requests; confirm via `document.fonts` that Antonio 400/700 and Inter 400/600 are all loaded from the repo; check a Pixel 7 size (412x915) screenshot of the telemetry drawer and Settings drawer by eye, and confirm °, ± and … render. Expect text to look different from earlier test screenshots, because those were taken with Google's fonts blocked and used fallback fonts, so an old-vs-new pixel comparison isn't meaningful for this item. Rerun the v64/v65 home-location tests to confirm nothing else changed.
 - Ships as: v66.
 
-
 ### 2. Offline cache (service worker)
 **Not yet authorized to build.**
 
