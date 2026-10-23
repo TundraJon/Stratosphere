@@ -4,11 +4,24 @@ Mobile flight tracker. Plain HTML/CSS/JS web app, no build tools.
 
 ## Before any work
 
-Read these first:
-- `docs/build-planner.md` - long-term plans and goals
-- `docs/build-queue.md` - what we are building next
+Read `README.md` first. It holds the standing rule, the Build Log, the Build Queue and the Build Planner. Follow the workflow described there:
+- Every request is logged first (Queue or Planner), with a number and a precise description.
+- Logging is not build permission. Build only after Jon says "build N", "build all" or "go ahead and build".
+- Each build gets a Build Log entry (what changed, how it was tested, what was left out).
+- Only edit the Queue, Planner and Log when Jon says to.
 
-Do not suggest or start work that isn't in the queue until Jon approves it. Only edit these two files when Jon says to.
+## Standing rules
+
+1. Never build or edit code without an explicit "build". A message that reads like an instruction is still only logged.
+2. If you ask a question, wait for the answer. Don't assume one and start building.
+3. If something is ambiguous, ask. Restate what you think Jon wants and spell out the exact interpretation.
+4. No unrequested clean-up, optimizing, modernizing or reformatting. Keep formatting, spacing and structure.
+5. Never add or remove features unasked, and never touch unrelated code.
+6. Test before pushing. Small changes get a focused test. Broad changes get the full suite.
+7. Commit and push to `main`, with no PRs.
+8. Phone-first. Design and test at Pixel 7 size.
+9. Direct and casual, under about 300 words unless asked for more. Give real recommendations and push back when an idea has a problem. No filler openers.
+10. Priorities: professional-looking apps and games, useful extras, new ideas, innovative RPG combat and pocket travel games, and what other apps do above and beyond.
 
 ## Code structure
 
