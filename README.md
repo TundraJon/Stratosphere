@@ -70,6 +70,22 @@ Promoted from the Build Planner (old item 3). Jon confirmed all three design dec
 - Test plan: enter lat/lon and check "Show on map", reload, and confirm the fields refill and the 🏠 draws; clear the fields, reload, and confirm nothing is restored; enter an out-of-range value, reload, and confirm no marker; block storage and confirm no errors; run the old-vs-new load check at Pixel 7 size (412x915) with no saved value and confirm nothing else changed.
 - Ships as: v64.
 
+### 2. "Use my current location" button for the home location
+**Not yet authorized to build.** Items marked *(proposed)* are my defaults and still need Jon's OK.
+
+Jon's idea: set home by tapping a button while physically at home, instead of looking up the lat/lon online.
+
+- Depends on: item 1. It works without it, but the value would not be saved between sessions, so build item 1 first or together with it.
+- Where: a button in the Home Location 🏠 group in the Settings drawer (`index.html`), under the lat/lon boxes. Label *(proposed)*: "📍 Use my current location".
+- Behavior: one-shot `navigator.geolocation.getCurrentPosition` request with `enableHighAccuracy: true` and `maximumAge: 0`. Its own request, not the app's 3-second GPS polling, which uses a 2.5-second timeout that is too short for an indoor fix. Timeout *(proposed)*: 15 seconds.
+- On success: write the latitude and longitude into `input-home-lat` and `input-home-lon`, rounded to 5 decimal places (about 1 meter) *(proposed)*, check "Show on map" *(proposed)*, then call `handleHomeLocationChange()`. That reuses the existing validation, redraw and (once item 1 exists) saving.
+- While waiting: a small status line under the button reads "Locating…". On success it reads "Home set (accuracy ±N m)", using `pos.coords.accuracy`. The fix is always accepted. If the accuracy is poor, Jon can tap the button again.
+- On failure (permission denied, position unavailable, timeout, or no geolocation support): a status line explains why, and the boxes and saved value are left untouched.
+- If the boxes already hold a home location: overwrite it with no confirmation *(proposed)*.
+- Not included: no address lookup, no continuous or background tracking, no changes to the app's existing GPS polling.
+- Test plan: mock a GPS fix in headless Chromium and confirm the boxes fill, the 🏠 draws, and the status line shows the accuracy; mock permission-denied and timeout and confirm the status message and untouched boxes; confirm the existing GPS polling and plane position are unaffected; run the old-vs-new load check at Pixel 7 size (412x915) with the button unused.
+- Ships as: v65.
+
 ## Build Planner
 
 Ideas and known gaps with no committed design yet. Resolved, built, dropped or superseded items are deleted from here, and their history lives in the Build Log.
