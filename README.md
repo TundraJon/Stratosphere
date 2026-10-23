@@ -132,7 +132,6 @@ Promoted from the Build Planner (old item 8). Jon confirmed: network-first with 
 Ideas and known gaps with no committed design yet. Resolved, built, dropped or superseded items are deleted from here, and their history lives in the Build Log.
 
 ### From the handoff doc
-1. **Cutscene runway color:** black -> medium grey (no hex chosen)
 2. **Cutscene background gradient gap:** the main map uses scattered-dot
    seasons, but the cutscene likely still uses a plain gradient
    - Low value now: the automatic cutscene trigger is disabled
