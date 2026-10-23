@@ -70,25 +70,31 @@ Promoted from the Build Planner and built as spec'd in the Build Queue (Jon conf
 - Old-vs-new load check with no saved home: zero errors, same airport (133) and state (51) counts. Screenshots were byte-identical on 1 of 3 runs; the unchanged version also differed from itself on 2 of 3 runs earlier (live plane position timing).
 - Not tested: a real phone, or a real app relaunch (only page reloads in Chromium). A number box holds an empty value while a lone "-" is typed, so a half-typed "-" is not saved.
 
+### Build Log 6 (completed): v65, "Use my current location" button for the home location
+Built as spec'd in the Build Queue, with Jon's decisions: "your defaults", plus one change: ask for confirmation before replacing an existing home location.
+- [x] `index.html`: a "📍 Use my current location" button (`btn-home-use-gps`) and a small status line (`home-gps-status`) in the Home Location 🏠 group, between the lat/lon boxes and the "Show on map" checkbox.
+- [x] `js/controls.js`: new `useCurrentLocationAsHome()` and `setHomeGpsStatus()`. A one-shot `getCurrentPosition` request with `enableHighAccuracy: true`, `maximumAge: 0` and a 15-second timeout. It is its own request, separate from the app's 3-second GPS polling.
+- [x] On success: writes latitude and longitude to 5 decimal places into the boxes, checks "Show on map", then calls `handleHomeLocationChange()` (existing validation, redraw and v64 saving). Status line: "Home set (accuracy ±N m)", or "accuracy unknown".
+- [x] While waiting: the button is disabled and the status line reads "Locating…".
+- [x] Failures (permission denied, position unavailable, timeout, no geolocation support): the status line says why and ends with "Home not changed." Boxes and saved value are untouched.
+- [x] Confirmation: if a home location is already set, a `window.confirm` (no custom dialog existed to reuse) asks "Replace your current home location (old) with your current position (new, accuracy ±N m)?" The prompt appears after the fix arrives, so Jon can decline a poor-accuracy fix. Declining leaves everything unchanged and shows "Home not changed."
+- [x] Left alone, as spec'd: the app's existing GPS polling; no address lookup; no background tracking; no CSS changes.
+
+**Verification:** headless Chromium at Pixel 7 size (412x915) with a mocked GPS fix (accuracy 12.4 m).
+- Success with no home set: boxes show 28.53830 / -81.37920, Show is checked, `STATE` is set, the value is saved to storage, status reads "Home set (accuracy ±12 m)", no confirm appears, no errors.
+- Existing home, declined: the confirm shows the old and new coordinates and the accuracy; boxes, state and status are unchanged. Existing home, accepted: replaced, Show on, saved.
+- Permission denied, position unavailable (code 2), timeout (code 3) and no geolocation support each show their message, change nothing and leave the button enabled.
+- While waiting, the button is disabled and shows "Locating…"; after the fix it is re-enabled and the home is set.
+- The app's existing GPS polling still drives the plane position. The layout was checked in a screenshot of the expanded Settings drawer.
+- The v64 persistence and 🏠 marker tests were rerun against the final code: all pass.
+- Old-vs-new load check with no saved home: zero errors, same airport (133) and state (51) counts. Screenshots differed by 0 to 291 pixels out of 376,000, in the same small areas (telemetry text and plane) as the unchanged version differs from itself (0 to 193 pixels).
+- Not tested: a real phone or a real indoor GPS fix (the GPS was mocked). The Settings drawer scrolls inside its fixed height, so with the new button the "Show on map" checkbox sits slightly lower and needs a small scroll on a phone.
+
 ## Build Queue
 
 Fully specified work that is waiting for a go-ahead. Items leave this list in the same commit that builds them.
 
-### 1. "Use my current location" button for the home location
-**Not yet authorized to build.** Items marked *(proposed)* are my defaults and still need Jon's OK.
-
-Jon's idea: set home by tapping a button while physically at home, instead of looking up the lat/lon online.
-
-- Depends on: item 1. It works without it, but the value would not be saved between sessions, so build item 1 first or together with it.
-- Where: a button in the Home Location 🏠 group in the Settings drawer (`index.html`), under the lat/lon boxes. Label *(proposed)*: "📍 Use my current location".
-- Behavior: one-shot `navigator.geolocation.getCurrentPosition` request with `enableHighAccuracy: true` and `maximumAge: 0`. Its own request, not the app's 3-second GPS polling, which uses a 2.5-second timeout that is too short for an indoor fix. Timeout *(proposed)*: 15 seconds.
-- On success: write the latitude and longitude into `input-home-lat` and `input-home-lon`, rounded to 5 decimal places (about 1 meter) *(proposed)*, check "Show on map" *(proposed)*, then call `handleHomeLocationChange()`. That reuses the existing validation, redraw and (once item 1 exists) saving.
-- While waiting: a small status line under the button reads "Locating…". On success it reads "Home set (accuracy ±N m)", using `pos.coords.accuracy`. The fix is always accepted. If the accuracy is poor, Jon can tap the button again.
-- On failure (permission denied, position unavailable, timeout, or no geolocation support): a status line explains why, and the boxes and saved value are left untouched.
-- If the boxes already hold a home location: overwrite it with no confirmation *(proposed)*.
-- Not included: no address lookup, no continuous or background tracking, no changes to the app's existing GPS polling.
-- Test plan: mock a GPS fix in headless Chromium and confirm the boxes fill, the 🏠 draws, and the status line shows the accuracy; mock permission-denied and timeout and confirm the status message and untouched boxes; confirm the existing GPS polling and plane position are unaffected; run the old-vs-new load check at Pixel 7 size (412x915) with the button unused.
-- Ships as: v65.
+_Empty — nothing queued right now._
 
 ## Build Planner
 

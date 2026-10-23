@@ -107,6 +107,55 @@
     }
     document.addEventListener("DOMContentLoaded", loadHomeLocation);
 
+    function setHomeGpsStatus(text) {
+        document.getElementById('home-gps-status').textContent = text;
+    }
+
+    // "Use my current location" -- one-shot, high-accuracy GPS fix written
+    // into the home lat/lon boxes. Deliberately its own request rather than
+    // the app's 3-second GPS polling (fetchGPSPosition), whose 2.5s timeout
+    // is too short for a fix indoors. If a home location is already set, it
+    // asks before replacing it, showing the new fix and its accuracy.
+    function useCurrentLocationAsHome() {
+        if (!("geolocation" in navigator)) {
+            setHomeGpsStatus('Location is not supported on this device.');
+            return;
+        }
+        const btn = document.getElementById('btn-home-use-gps');
+        btn.disabled = true;
+        setHomeGpsStatus('Locating…');
+        navigator.geolocation.getCurrentPosition(
+            (pos) => {
+                btn.disabled = false;
+                const lat = pos.coords.latitude.toFixed(5);
+                const lon = pos.coords.longitude.toFixed(5);
+                const accText = (pos.coords.accuracy != null && !isNaN(pos.coords.accuracy))
+                    ? '±' + Math.round(pos.coords.accuracy) + ' m' : 'unknown';
+                const hasHome = STATE.homeLocation.lat !== null && STATE.homeLocation.lon !== null;
+                if (hasHome && !window.confirm(
+                    'Replace your current home location (' + STATE.homeLocation.lat + ', ' + STATE.homeLocation.lon +
+                    ') with your current position (' + lat + ', ' + lon + ', accuracy ' + accText + ')?')) {
+                    setHomeGpsStatus('Home not changed.');
+                    return;
+                }
+                document.getElementById('input-home-lat').value = lat;
+                document.getElementById('input-home-lon').value = lon;
+                document.getElementById('chk-home-show').checked = true;
+                handleHomeLocationChange();
+                setHomeGpsStatus('Home set (accuracy ' + accText + ')');
+            },
+            (err) => {
+                btn.disabled = false;
+                const msg = err.code === 1 ? 'Location permission was denied.'
+                    : err.code === 2 ? 'Position unavailable.'
+                    : err.code === 3 ? 'Timed out waiting for a GPS fix.'
+                    : 'Could not get your location.';
+                setHomeGpsStatus(msg + ' Home not changed.');
+            },
+            { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
+        );
+    }
+
     function toggleTerminator() {
         STATE.toggles.terminator = !STATE.toggles.terminator;
         document.getElementById('btn-toggle-terminator').classList.toggle('active', STATE.toggles.terminator);
