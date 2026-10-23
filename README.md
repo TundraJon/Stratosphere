@@ -94,7 +94,20 @@ Built as spec'd in the Build Queue, with Jon's decisions: "your defaults", plus 
 
 Fully specified work that is waiting for a go-ahead. Items leave this list in the same commit that builds them.
 
-_Empty — nothing queued right now._
+### 1. Self-host the fonts (remove the Google Fonts dependency)
+**Not yet authorized to build.**
+
+Jon's request: stop downloading the fonts from Google Fonts on every launch. The Google Fonts link is the only external dependency in the app.
+
+- Fonts used: **Antonio** 400 and 700 (large readouts) and **Inter** 400 and 600 (everything else). These match the weights in the current Google link.
+- Files: a new `fonts/` folder holding four `woff2` files, **Latin subset only** (Jon confirmed), about 100 KB total. Source: the `@fontsource/antonio` and `@fontsource/inter` npm packages (v5.3.0 at the time of writing), both SIL OFL-1.1.
+- License: the OFL license text goes in `fonts/` next to the files, as the license requires.
+- `css/styles.css`: four `@font-face` rules at the very top, with `font-display: swap` (same as the current Google link) and `src: url('../fonts/...')`. No other CSS changes.
+- `index.html`: delete the Google Fonts `<link>` (line 8) and the comment line above it that describes it. Nothing else changes.
+- Not included: no other fonts, no other weights, no service worker (see Build Planner item 8).
+- Test plan: load the page with every external host blocked and confirm there are zero requests leaving the site and zero failed requests; confirm via `document.fonts` that Antonio 400/700 and Inter 400/600 are all loaded from the repo; check a Pixel 7 size (412x915) screenshot of the telemetry drawer and Settings drawer by eye, and confirm °, ± and … render. Expect text to look different from earlier test screenshots, because those were taken with Google's fonts blocked and used fallback fonts, so an old-vs-new pixel comparison isn't meaningful for this item. Rerun the v64/v65 home-location tests to confirm nothing else changed.
+- Ships as: v66.
+
 
 ## Build Planner
 
@@ -121,3 +134,12 @@ Ideas and known gaps with no committed design yet. Resolved, built, dropped or s
 ### Status unknown (can't confirm either way)
 7. **Plane icon reading the same variable as the Flight Info lat/lon:**
    in the handoff doc's old queue. I can't tell whether it was ever built.
+
+### Surfaced later
+8. **Offline reload (service worker):** self-hosting the fonts (Build Queue 1)
+   removes the Google dependency, but the app still needs internet to load
+   the page itself. If the tab is closed mid-flight and reopened offline, the
+   page won't load. A service worker (an offline cache, usually with "Add to
+   Home Screen") would fix that. Open questions: which files to cache, how
+   updates are picked up after a push, and whether the app should be
+   installable.
