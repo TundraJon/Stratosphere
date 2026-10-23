@@ -51,26 +51,30 @@ The comment described a zoom-level debug readout that no longer exists. Nothing 
 - Old and new versions loaded in headless Chromium at Pixel 7 size (412x915, simulated GPS fix at Orlando, seeded `Math.random`). Zero JS errors, same airport dropdown count (133), 51 state polygons, 128 airports.
 - Screenshots were byte-identical on 2 of 3 old-vs-new runs. The unchanged old version also differed from itself on 2 of 3 runs (timing noise in the live plane position), so a difference is not caused by this change.
 
+### Build Log 5 (completed): v64, save the home location between sessions
+Promoted from the Build Planner and built as spec'd in the Build Queue (Jon confirmed: save the "Show on map" checkbox too, browser-only storage, reverse the old "deliberately not persisted" decision).
+- [x] `js/controls.js`: new `HOME_STORAGE_KEY` (`stratosphere.homeLocation`), `saveHomeLocation()` and `loadHomeLocation()`. The saved JSON is `{lat, lon, show}`: the text of the two input boxes plus the checkbox. If both boxes are empty and the checkbox is unchecked, the key is removed instead.
+- [x] `handleHomeLocationChange()` calls `saveHomeLocation()` after updating `STATE.homeLocation`.
+- [x] `loadHomeLocation()` runs on `DOMContentLoaded`: refills the boxes and checkbox, then calls `handleHomeLocationChange()` so the existing validation and redraw apply. A missing or unreadable entry does nothing.
+- [x] Every storage call is wrapped in `try/catch`, so blocked storage behaves like today.
+- [x] Updated the three "not persisted" comments in `js/controls.js`, `js/state.js` and `js/terminator.js`.
+- [x] **Bug found during verification (existed in v62):** the render cache's change signature in `draw()` (`js/live-layer.js`) doesn't include the home location, so the 🏠 did not appear after entering or restoring a home location until the view changed (pan, zoom or a toggle). Confirmed in the unmodified v62 code. Fixed with one line in `handleHomeLocationChange()`: `STATE.render.cacheValid = false;`. `js/live-layer.js` was not touched. Jon chose this option over editing the signature.
+- [x] Left out, as spec'd: no other settings are saved; no address lookup.
+
+**Verification:** headless Chromium at Pixel 7 size (412x915), simulated GPS fix at Orlando.
+- Fresh load: nothing saved, boxes empty, no errors.
+- Enter values and check "Show on map": the stored JSON is exactly `{lat, lon, show}`. After a reload, the boxes refill, `STATE` is restored, and the 🏠 is drawn (pixel check against a run with no home).
+- Typing at runtime now draws the 🏠 without moving the map, and looks identical to the restored one. Saved with "Show" off: no marker.
+- Clear the boxes: the key is removed, and a reload restores nothing.
+- Out-of-range latitude (200): restored into the box, no marker, no errors. Corrupt saved value: ignored, no errors. Storage blocked entirely: app loads, home works for the session, no errors.
+- Old-vs-new load check with no saved home: zero errors, same airport (133) and state (51) counts. Screenshots were byte-identical on 1 of 3 runs; the unchanged version also differed from itself on 2 of 3 runs earlier (live plane position timing).
+- Not tested: a real phone, or a real app relaunch (only page reloads in Chromium). A number box holds an empty value while a lone "-" is typed, so a half-typed "-" is not saved.
+
 ## Build Queue
 
 Fully specified work that is waiting for a go-ahead. Items leave this list in the same commit that builds them.
 
-### 1. Save the home location between sessions
-**Not yet authorized to build.**
-
-Promoted from the Build Planner (old item 3). Jon confirmed all three design decisions: save the "Show on map" checkbox too, use browser-only storage, and reverse the old "deliberately not persisted" decision.
-
-- Storage: browser `localStorage`, one key, `stratosphere.homeLocation`, holding JSON `{lat, lon, show}`. `lat` and `lon` are the raw text from the two input boxes (so a half-typed entry round-trips), and `show` is the checkbox state.
-- Save: at the end of `handleHomeLocationChange()` (`js/controls.js`), after `STATE.homeLocation` is updated, write the key. If both boxes are empty and the checkbox is unchecked, remove the key instead.
-- Load: one `DOMContentLoaded` handler in `js/controls.js` reads the key, fills `input-home-lat`, `input-home-lon` and `chk-home-show`, then calls `handleHomeLocationChange()`. That reuses the existing validation and `draw()`, so the 🏠 appears without a second code path. A missing or unparseable key does nothing.
-- Validation is unchanged: out-of-range or non-numeric values count as "not set", and nothing is drawn.
-- Storage unavailable (private mode, blocked site data): every read and write is wrapped in `try/catch`, and the app behaves exactly as it does today.
-- Comments to update so they stop saying "not persisted": `js/controls.js` (the comment above `handleHomeLocationChange`), `js/state.js` (`homeLocation.lat`), `js/terminator.js` (the "DRAW HOME LOCATION" comment).
-- Not included: no other settings are saved (day/night, speed unit, toggles); no address lookup; no "use my GPS position as home" button.
-- Test plan: enter lat/lon and check "Show on map", reload, and confirm the fields refill and the 🏠 draws; clear the fields, reload, and confirm nothing is restored; enter an out-of-range value, reload, and confirm no marker; block storage and confirm no errors; run the old-vs-new load check at Pixel 7 size (412x915) with no saved value and confirm nothing else changed.
-- Ships as: v64.
-
-### 2. "Use my current location" button for the home location
+### 1. "Use my current location" button for the home location
 **Not yet authorized to build.** Items marked *(proposed)* are my defaults and still need Jon's OK.
 
 Jon's idea: set home by tapping a button while physically at home, instead of looking up the lat/lon online.

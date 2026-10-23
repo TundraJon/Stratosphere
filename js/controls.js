@@ -50,11 +50,10 @@
     }
 
     // Home location -- direct lat/lon entry only (no address/geocoding, to
-    // keep this fully offline like the rest of the app), and deliberately
-    // NOT persisted between sessions, per explicit request -- re-entered
-    // each time, so it can't interact badly with anything else already
-    // built. Invalid or out-of-range values are treated as "not set" rather
-    // than drawing a marker somewhere nonsensical.
+    // keep this fully offline like the rest of the app). Saved to
+    // localStorage so it survives closing the app -- see saveHomeLocation /
+    // loadHomeLocation below. Invalid or out-of-range values are treated as
+    // "not set" rather than drawing a marker somewhere nonsensical.
     function handleHomeLocationChange() {
         const latVal = parseFloat(document.getElementById('input-home-lat').value);
         const lonVal = parseFloat(document.getElementById('input-home-lon').value);
@@ -63,8 +62,50 @@
         STATE.homeLocation.lat = latValid ? latVal : null;
         STATE.homeLocation.lon = lonValid ? lonVal : null;
         STATE.homeLocation.show = document.getElementById('chk-home-show').checked;
+        saveHomeLocation();
+        // The render cache's change-detection signature (see draw() in
+        // live-layer.js) doesn't include the home location, so without this
+        // the marker wouldn't appear until something else changed the view.
+        STATE.render.cacheValid = false;
         draw();
     }
+
+    const HOME_STORAGE_KEY = 'stratosphere.homeLocation';
+
+    // Saves the raw text of the two input boxes plus the "Show on map"
+    // checkbox. If everything is empty/unchecked, removes the saved entry
+    // instead. Every storage call is wrapped in try/catch: if storage is
+    // unavailable (private mode, blocked site data), the app simply behaves
+    // as if nothing were saved.
+    function saveHomeLocation() {
+        const latText = document.getElementById('input-home-lat').value;
+        const lonText = document.getElementById('input-home-lon').value;
+        const show = document.getElementById('chk-home-show').checked;
+        try {
+            if (latText === '' && lonText === '' && !show) {
+                localStorage.removeItem(HOME_STORAGE_KEY);
+            } else {
+                localStorage.setItem(HOME_STORAGE_KEY, JSON.stringify({ lat: latText, lon: lonText, show: show }));
+            }
+        } catch (e) { /* storage unavailable -- nothing to do */ }
+    }
+
+    // Restores the saved home location on launch: refills the inputs, then
+    // goes through handleHomeLocationChange() so the normal validation and
+    // redraw apply. A missing or unreadable entry does nothing.
+    function loadHomeLocation() {
+        let saved = null;
+        try {
+            const raw = localStorage.getItem(HOME_STORAGE_KEY);
+            if (raw) saved = JSON.parse(raw);
+        } catch (e) { return; }
+        if (!saved || typeof saved !== 'object') return;
+        document.getElementById('input-home-lat').value = String(saved.lat ?? '');
+        document.getElementById('input-home-lon').value = String(saved.lon ?? '');
+        document.getElementById('chk-home-show').checked = saved.show === true;
+        handleHomeLocationChange();
+    }
+    document.addEventListener("DOMContentLoaded", loadHomeLocation);
 
     function toggleTerminator() {
         STATE.toggles.terminator = !STATE.toggles.terminator;

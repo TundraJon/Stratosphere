@@ -492,7 +492,7 @@
             });
         }
 
-        // --- DRAW HOME LOCATION (optional, user-entered lat/lon, no persistence) ---
+        // --- DRAW HOME LOCATION (optional, user-entered lat/lon, saved in localStorage) ---
         if (STATE.homeLocation.show && STATE.homeLocation.lat !== null && STATE.homeLocation.lon !== null) {
             const p = project(STATE.homeLocation.lat, STATE.homeLocation.lon);
             drawFixedLabel(p, () => {

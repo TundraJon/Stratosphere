@@ -30,7 +30,7 @@
         },
         borderPreset: { day: 'white', night: 'gold' },
         homeLocation: {
-            lat: null,   // null until the user enters a value -- no persistence across sessions, by design
+            lat: null,   // null until the user enters a value (restored from localStorage on launch, see loadHomeLocation)
             lon: null,
             show: false  // "Show on map" checkbox state
         },
