@@ -55,7 +55,20 @@ The comment described a zoom-level debug readout that no longer exists. Nothing 
 
 Fully specified work that is waiting for a go-ahead. Items leave this list in the same commit that builds them.
 
-_Empty — nothing queued right now._
+### 1. Save the home location between sessions
+**Not yet authorized to build.**
+
+Promoted from the Build Planner (old item 3). Jon confirmed all three design decisions: save the "Show on map" checkbox too, use browser-only storage, and reverse the old "deliberately not persisted" decision.
+
+- Storage: browser `localStorage`, one key, `stratosphere.homeLocation`, holding JSON `{lat, lon, show}`. `lat` and `lon` are the raw text from the two input boxes (so a half-typed entry round-trips), and `show` is the checkbox state.
+- Save: at the end of `handleHomeLocationChange()` (`js/controls.js`), after `STATE.homeLocation` is updated, write the key. If both boxes are empty and the checkbox is unchecked, remove the key instead.
+- Load: one `DOMContentLoaded` handler in `js/controls.js` reads the key, fills `input-home-lat`, `input-home-lon` and `chk-home-show`, then calls `handleHomeLocationChange()`. That reuses the existing validation and `draw()`, so the 🏠 appears without a second code path. A missing or unparseable key does nothing.
+- Validation is unchanged: out-of-range or non-numeric values count as "not set", and nothing is drawn.
+- Storage unavailable (private mode, blocked site data): every read and write is wrapped in `try/catch`, and the app behaves exactly as it does today.
+- Comments to update so they stop saying "not persisted": `js/controls.js` (the comment above `handleHomeLocationChange`), `js/state.js` (`homeLocation.lat`), `js/terminator.js` (the "DRAW HOME LOCATION" comment).
+- Not included: no other settings are saved (day/night, speed unit, toggles); no address lookup; no "use my GPS position as home" button.
+- Test plan: enter lat/lon and check "Show on map", reload, and confirm the fields refill and the 🏠 draws; clear the fields, reload, and confirm nothing is restored; enter an out-of-range value, reload, and confirm no marker; block storage and confirm no errors; run the old-vs-new load check at Pixel 7 size (412x915) with no saved value and confirm nothing else changed.
+- Ships as: v64.
 
 ## Build Planner
 
@@ -69,9 +82,6 @@ Ideas and known gaps with no committed design yet. Resolved, built, dropped or s
      (the manual test buttons still run it)
 
 ### Surfaced in earlier sessions
-3. **Home location isn't saved between sessions:** you have to re-enter
-   the lat/lon each launch. You raised this as a pain point, and v62
-   doesn't fix it.
 4. **GPS-noise tuning after your flight test:** 60 ft lateral margin,
    150 ft along-track margin, 7° alignment, 50 mph threshold.
    Waiting on real-world results from the GPS-loss flight test. The 60 ft
