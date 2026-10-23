@@ -1,3 +1,34 @@
+        /* Self-hosted fonts (Latin subset, SIL Open Font License -- see fonts/LICENSE-*.txt).
+           Antonio for the large telemetry readouts, Inter for everything else. */
+        @font-face {
+            font-family: 'Antonio';
+            font-style: normal;
+            font-weight: 400;
+            font-display: swap;
+            src: url('../fonts/antonio-latin-400-normal.woff2') format('woff2');
+        }
+        @font-face {
+            font-family: 'Antonio';
+            font-style: normal;
+            font-weight: 700;
+            font-display: swap;
+            src: url('../fonts/antonio-latin-700-normal.woff2') format('woff2');
+        }
+        @font-face {
+            font-family: 'Inter';
+            font-style: normal;
+            font-weight: 400;
+            font-display: swap;
+            src: url('../fonts/inter-latin-400-normal.woff2') format('woff2');
+        }
+        @font-face {
+            font-family: 'Inter';
+            font-style: normal;
+            font-weight: 600;
+            font-display: swap;
+            src: url('../fonts/inter-latin-600-normal.woff2') format('woff2');
+        }
+
         :root {
             /* --- NIGHT MODE (default) color palette --- */
             --bg-page: #0d0e12;

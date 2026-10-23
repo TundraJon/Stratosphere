@@ -90,25 +90,26 @@ Built as spec'd in the Build Queue, with Jon's decisions: "your defaults", plus 
 - Old-vs-new load check with no saved home: zero errors, same airport (133) and state (51) counts. Screenshots differed by 0 to 291 pixels out of 376,000, in the same small areas (telemetry text and plane) as the unchanged version differs from itself (0 to 193 pixels).
 - Not tested: a real phone or a real indoor GPS fix (the GPS was mocked). The Settings drawer scrolls inside its fixed height, so with the new button the "Show on map" checkbox sits slightly lower and needs a small scroll on a phone.
 
+### Build Log 7 (completed): v66, self-host the fonts
+Built as spec'd in the Build Queue. Removes the app's only external dependency (the Google Fonts link).
+- [x] New `fonts/` folder: `antonio-latin-400-normal.woff2`, `antonio-latin-700-normal.woff2`, `inter-latin-400-normal.woff2`, `inter-latin-600-normal.woff2` (about 70 KB total, Latin subset only), plus `LICENSE-Antonio.txt` and `LICENSE-Inter.txt` (SIL OFL 1.1, as the license requires). Source: the `@fontsource/antonio` and `@fontsource/inter` npm packages, v5.3.0.
+- [x] `css/styles.css`: four `@font-face` rules at the very top (`font-display: swap`, `src: url('../fonts/...woff2')`), with a short comment. No other CSS changes.
+- [x] `index.html`: removed the Google Fonts `<link>` and the comment line above it. Nothing else changed.
+- [x] Left out, as spec'd: no other fonts or weights, no service worker (see Build Queue 1).
+
+**Verification:** headless Chromium at Pixel 7 size (412x915) against a local server, with every host except the local server blocked.
+- Zero external requests attempted, zero failed requests, zero JS errors, map ready.
+- All four font files were served from `/fonts/` with status 200, and `document.fonts.check` is true for all four faces. Antonio 400, Inter 400 and Inter 600 loaded on page load. Antonio 700 loads on demand: nothing in the UI currently uses bold Antonio, so it was not requested until the test asked for it (the old Google link declared the same weights).
+- Checked by eye in screenshots of the main screen and the open Settings drawer: the telemetry readouts render in the condensed Antonio, and labels and buttons render in Inter.
+- Coverage check: every non-emoji character the app draws was compared against Google's own subset ranges. `°`, `±`, `—` and `…` are inside the Latin subset. `≡`, `▲`, `▼`, `➢` and `✈` were never in any Google subset for these fonts, so they use the system fallback before and after this change. The data files contain no accented letters.
+- The v64 and v65 test suites were rerun against this build: all pass.
+- Not compared: pixel-for-pixel against the old version. Earlier test screenshots were taken with Google's fonts blocked, so they used fallback fonts and the text looks different by design. Not tested on a real phone.
+
 ## Build Queue
 
 Fully specified work that is waiting for a go-ahead. Items leave this list in the same commit that builds them.
 
-### 1. Self-host the fonts (remove the Google Fonts dependency)
-**Not yet authorized to build.**
-
-Jon's request: stop downloading the fonts from Google Fonts on every launch. The Google Fonts link is the only external dependency in the app.
-
-- Fonts used: **Antonio** 400 and 700 (large readouts) and **Inter** 400 and 600 (everything else). These match the weights in the current Google link.
-- Files: a new `fonts/` folder holding four `woff2` files, **Latin subset only** (Jon confirmed), about 100 KB total. Source: the `@fontsource/antonio` and `@fontsource/inter` npm packages (v5.3.0 at the time of writing), both SIL OFL-1.1.
-- License: the OFL license text goes in `fonts/` next to the files, as the license requires.
-- `css/styles.css`: four `@font-face` rules at the very top, with `font-display: swap` (same as the current Google link) and `src: url('../fonts/...')`. No other CSS changes.
-- `index.html`: delete the Google Fonts `<link>` (line 8) and the comment line above it that describes it. Nothing else changes.
-- Not included: no other fonts, no other weights, no service worker (see Build Planner item 8).
-- Test plan: load the page with every external host blocked and confirm there are zero requests leaving the site and zero failed requests; confirm via `document.fonts` that Antonio 400/700 and Inter 400/600 are all loaded from the repo; check a Pixel 7 size (412x915) screenshot of the telemetry drawer and Settings drawer by eye, and confirm °, ± and … render. Expect text to look different from earlier test screenshots, because those were taken with Google's fonts blocked and used fallback fonts, so an old-vs-new pixel comparison isn't meaningful for this item. Rerun the v64/v65 home-location tests to confirm nothing else changed.
-- Ships as: v66.
-
-### 2. Offline cache (service worker)
+### 1. Offline cache (service worker)
 **Not yet authorized to build.**
 
 Promoted from the Build Planner (old item 8). Jon confirmed: network-first with a 3-second fallback, and offline cache only (not installable). Jon's expectation: no in-flight updating and no "update available" banner. A new version arrives when the page is next loaded with internet, and offline the app runs from its cache.
@@ -121,7 +122,7 @@ Promoted from the Build Planner (old item 8). Jon confirmed: network-first with 
 - First-visit rule: the very first page load finishes before the worker is active, so its files never pass through the fetch handler. To fix that without a hand-kept file list, `js/register-sw.js` sends the worker the list of same-origin URLs the page loaded (from `performance.getEntriesByType('resource')` plus the page URL) once the worker is ready, but only when the page was not already controlled by a worker. The worker fetches and caches them. Anything loaded later (for example a font used on a later screen) is cached by the normal fetch handler.
 - Not included: no manifest or icons (see Build Planner item 9), no update banner, no background sync, no changes to the app's own GPS or home-location code.
 - Test plan, at Pixel 7 size (412x915) against a local server (localhost counts as a secure context): load once online, wait for the cache to fill, go offline, reload, and confirm the map loads, the loader fades, there are zero JS errors, every script and the CSS came from the cache, and the home location still restores; change a served file, reload once online, and confirm the new version shows on that first reload; serve it with a long `max-age` header and confirm the new version still shows on the first reload; delay responses past 3 seconds and confirm the page loads from the cache after about 3 seconds; confirm the app works with the service worker unsupported or blocked; confirm nothing external is requested; rerun the v64/v65 home-location tests. Then recheck the live GitHub Pages site once after pushing.
-- Order: independent of Build Queue 1. If the fonts are self-hosted first, they are cached automatically like any other file.
+- Fonts: already self-hosted (Build Log 7), so they are cached like any other file.
 - Ships as: v67.
 
 ## Build Planner
@@ -153,6 +154,6 @@ Ideas and known gaps with no committed design yet. Resolved, built, dropped or s
 ### Surfaced later
 9. **Installable app ("Add to Home Screen"):** split out of the offline-cache
    idea. Needs a web app manifest (name, theme color, standalone display) and
-   app icons, and builds on the offline cache (Build Queue 2). Not needed for
+   app icons, and builds on the offline cache (Build Queue 1). Not needed for
    offline use, so parked for now. Open questions: icon design, whether it
    should share a look with a future Google Play version.
