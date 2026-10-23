@@ -41,15 +41,21 @@ The app lived in one 12,169-line `index.html` (committed as-is first, `7922da0`)
 
 **Verification:** every item from Jon's pasted planner and queue is present below with its wording kept; the `docs/` files are gone.
 
+### Build Log 4 (completed): v63, delete the orphaned zoom-debug comment
+The comment described a zoom-level debug readout that no longer exists. Nothing follows it in the markup, and no zoom readout element exists in the HTML, JS or CSS.
+- [x] `index.html`: deleted the three-line "DEBUG: current zoom level..." HTML comment (old lines 45-47), under the Reset button block.
+- [x] Left alone: the blank line after it, to keep the original spacing.
+
+**Verification:**
+- `git diff` shows exactly 3 deletions, all comment lines.
+- Old and new versions loaded in headless Chromium at Pixel 7 size (412x915, simulated GPS fix at Orlando, seeded `Math.random`). Zero JS errors, same airport dropdown count (133), 51 state polygons, 128 airports.
+- Screenshots were byte-identical on 2 of 3 old-vs-new runs. The unchanged old version also differed from itself on 2 of 3 runs (timing noise in the live plane position), so a difference is not caused by this change.
+
 ## Build Queue
 
 Fully specified work that is waiting for a go-ahead. Items leave this list in the same commit that builds them.
 
-### 1. Delete the orphaned zoom-debug comment
-**Not yet authorized to build.**
-- Where: `index.html`, lines 45-47, the "DEBUG: current zoom level..." HTML comment just under the "Reset" button block. (The handoff doc called this lines 841-843, from before the file split.)
-- What: a comment-only change, so no code or behavior is touched.
-- Ships as: v63
+_Empty — nothing queued right now._
 
 ## Build Planner
 
