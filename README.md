@@ -127,6 +127,17 @@ Promoted from the Build Planner (old item 8). Jon confirmed: network-first with 
 - Fonts: already self-hosted (Build Log 7), so they are cached like any other file.
 - Ships as: v67.
 
+### 2. Fix a stale comment about the cutscene runway color
+**Not yet authorized to build.**
+
+Found while checking old Planner item 1: the cutscene runway is already medium grey (`#757575`), but a comment in `css/styles.css` still says it is black. Comment-only change, so no code or behavior is touched.
+
+- Where: `css/styles.css`, line 242, the last line of the `BUG FIX` comment on `#cutscene-runway-dashes`: `centerline on solid black pavement */`.
+- What: change the one word `black` to `grey`, so it reads `centerline on solid grey pavement */`. Nothing else on that line or in that comment changes.
+- Not included: the earlier line in the same comment ("alternate solid black/white bars") describes how the old bug looked and stays as written. No other file or line is touched.
+- Test plan: `git diff` shows exactly one changed line, inside a comment; load check at Pixel 7 size (412x915) with no errors; play the takeoff cutscene and confirm the runway still renders grey (`rgb(117, 117, 117)`).
+- Ships as: v68.
+
 ## Build Planner
 
 Ideas and known gaps with no committed design yet. Resolved, built, dropped or superseded items are deleted from here, and their history lives in the Build Log.
