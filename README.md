@@ -109,6 +109,22 @@ Jon's request: stop downloading the fonts from Google Fonts on every launch. The
 - Ships as: v66.
 
 
+### 2. Offline cache (service worker)
+**Not yet authorized to build.**
+
+Promoted from the Build Planner (old item 8). Jon confirmed: network-first with a 3-second fallback, and offline cache only (not installable). Jon's expectation: no in-flight updating and no "update available" banner. A new version arrives when the page is next loaded with internet, and offline the app runs from its cache.
+
+- New file `sw.js` in the repo root, so its scope covers the whole site (on GitHub Pages that is `/Stratosphere/`). Plain JS, no build step.
+- New file `js/register-sw.js`, loaded as the last `<script>` in `index.html` (after `js/controls.js`; no other script order changes). It registers `sw.js` on window `load`, wrapped in a check for `'serviceWorker' in navigator` and a `.catch` so an unsupported or failed registration changes nothing about the app.
+- Fetch strategy (GET requests to the same origin only; anything else passes through untouched): try the network with a 3-second timeout; on success, store a copy in the cache and return the response; on failure or timeout, return the cached copy. For page navigations with no cached copy of that exact URL, fall back to the cached `index.html`.
+- The network fetch uses `cache: 'no-cache'` so the browser revalidates instead of reusing its own HTTP cache. GitHub Pages typically lets browsers reuse files for several minutes, which would otherwise delay an update past a single reload.
+- Single cache name constant in `sw.js`; on activate, delete caches with any other name. `skipWaiting()` on install and `clients.claim()` on activate, so the new worker takes over on the first reload.
+- First-visit rule: the very first page load finishes before the worker is active, so its files never pass through the fetch handler. To fix that without a hand-kept file list, `js/register-sw.js` sends the worker the list of same-origin URLs the page loaded (from `performance.getEntriesByType('resource')` plus the page URL) once the worker is ready, but only when the page was not already controlled by a worker. The worker fetches and caches them. Anything loaded later (for example a font used on a later screen) is cached by the normal fetch handler.
+- Not included: no manifest or icons (see Build Planner item 9), no update banner, no background sync, no changes to the app's own GPS or home-location code.
+- Test plan, at Pixel 7 size (412x915) against a local server (localhost counts as a secure context): load once online, wait for the cache to fill, go offline, reload, and confirm the map loads, the loader fades, there are zero JS errors, every script and the CSS came from the cache, and the home location still restores; change a served file, reload once online, and confirm the new version shows on that first reload; serve it with a long `max-age` header and confirm the new version still shows on the first reload; delay responses past 3 seconds and confirm the page loads from the cache after about 3 seconds; confirm the app works with the service worker unsupported or blocked; confirm nothing external is requested; rerun the v64/v65 home-location tests. Then recheck the live GitHub Pages site once after pushing.
+- Order: independent of Build Queue 1. If the fonts are self-hosted first, they are cached automatically like any other file.
+- Ships as: v67.
+
 ## Build Planner
 
 Ideas and known gaps with no committed design yet. Resolved, built, dropped or superseded items are deleted from here, and their history lives in the Build Log.
@@ -136,10 +152,8 @@ Ideas and known gaps with no committed design yet. Resolved, built, dropped or s
    in the handoff doc's old queue. I can't tell whether it was ever built.
 
 ### Surfaced later
-8. **Offline reload (service worker):** self-hosting the fonts (Build Queue 1)
-   removes the Google dependency, but the app still needs internet to load
-   the page itself. If the tab is closed mid-flight and reopened offline, the
-   page won't load. A service worker (an offline cache, usually with "Add to
-   Home Screen") would fix that. Open questions: which files to cache, how
-   updates are picked up after a push, and whether the app should be
-   installable.
+9. **Installable app ("Add to Home Screen"):** split out of the offline-cache
+   idea. Needs a web app manifest (name, theme color, standalone display) and
+   app icons, and builds on the offline cache (Build Queue 2). Not needed for
+   offline use, so parked for now. Open questions: icon design, whether it
+   should share a look with a future Google Play version.
