@@ -122,7 +122,7 @@ Promoted from the Build Planner (old item 8). Jon confirmed: network-first with 
 - The network fetch uses `cache: 'no-cache'` so the browser revalidates instead of reusing its own HTTP cache. GitHub Pages typically lets browsers reuse files for several minutes, which would otherwise delay an update past a single reload.
 - Single cache name constant in `sw.js`; on activate, delete caches with any other name. `skipWaiting()` on install and `clients.claim()` on activate, so the new worker takes over on the first reload.
 - First-visit rule: the very first page load finishes before the worker is active, so its files never pass through the fetch handler. To fix that without a hand-kept file list, `js/register-sw.js` sends the worker the list of same-origin URLs the page loaded (from `performance.getEntriesByType('resource')` plus the page URL) once the worker is ready, but only when the page was not already controlled by a worker. The worker fetches and caches them. Anything loaded later (for example a font used on a later screen) is cached by the normal fetch handler.
-- Not included: no manifest or icons (see Build Planner item 9), no update banner, no background sync, no changes to the app's own GPS or home-location code.
+- Not included: no manifest or icons (see Build Planner item 4), no update banner, no background sync, no changes to the app's own GPS or home-location code.
 - Test plan, at Pixel 7 size (412x915) against a local server (localhost counts as a secure context): load once online, wait for the cache to fill, go offline, reload, and confirm the map loads, the loader fades, there are zero JS errors, every script and the CSS came from the cache, and the home location still restores; change a served file, reload once online, and confirm the new version shows on that first reload; serve it with a long `max-age` header and confirm the new version still shows on the first reload; delay responses past 3 seconds and confirm the page loads from the cache after about 3 seconds, the cache is refreshed in the background once the network answers, and later loads make no network attempt until the hour has passed (and do try again after the stored time has passed); confirm the app works with the service worker unsupported or blocked; confirm nothing external is requested; rerun the v64/v65 home-location tests. Then recheck the live GitHub Pages site once after pushing.
 - Fonts: already self-hosted (Build Log 7), so they are cached like any other file.
 - Ships as: v67.
@@ -143,18 +143,18 @@ Found while checking old Planner item 1: the cutscene runway is already medium g
 Ideas and known gaps with no committed design yet. Resolved, built, dropped or superseded items are deleted from here, and their history lives in the Build Log.
 
 ### Surfaced in earlier sessions
-4. **GPS-noise tuning after your flight test:** 60 ft lateral margin,
+1. **GPS-noise tuning after your flight test:** 60 ft lateral margin,
    150 ft along-track margin, 7° alignment, 50 mph threshold.
    Waiting on real-world results from the GPS-loss flight test. The 60 ft
    lateral margin, 150 ft along-track margin and 7° alignment are the
    values to watch.
-5. **Wyoming's snow start (Oct 11) comes before its dead-time (Oct 21):**
+2. **Wyoming's snow start (Oct 11) comes before its dead-time (Oct 21):**
    a known choice, parked
-6. **Track-Up mode never gets the idle-snapshot caching:** a limitation,
+3. **Track-Up mode never gets the idle-snapshot caching:** a limitation,
    not a regression
 
 ### Surfaced later
-9. **Installable app ("Add to Home Screen"):** split out of the offline-cache
+4. **Installable app ("Add to Home Screen"):** split out of the offline-cache
    idea. Needs a web app manifest (name, theme color, standalone display) and
    app icons, and builds on the offline cache (Build Queue 1). Not needed for
    offline use, so parked for now. Open questions: icon design, whether it
