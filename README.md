@@ -123,7 +123,8 @@ Built as spec'd in the Build Queue, with Jon's decisions: network-first with a 3
 - Slow server (answers after 4.5 seconds): that load showed the saved page, and the page was refreshed in the cache in the background (this also showed the behavior noted above).
 - Service workers blocked, and a browser with no service worker support: the app loads normally with no errors.
 - The v64, v65 and v66 test suites were rerun against this build: all pass.
-- Not tested: a real phone, or real airplane Wi-Fi. A browser-side timing check only; the live GitHub Pages site is checked separately below.
+- Live GitHub Pages site (checked after the deploy, headless Chromium at Pixel 7 size): the worker registered with the site scope and activated; the first visit filled the cache with 25 entries (the page, the CSS, 20 scripts, 3 fonts); no JS errors and nothing requested outside the site. With the network fully switched off, a reload loaded the app from the cache in about 30 ms, the loader faded, the saved home location came back and the 🏠 drew.
+- Not tested: a real phone, or real airplane Wi-Fi.
 
 ## Build Queue
 
