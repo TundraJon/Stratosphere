@@ -105,29 +105,31 @@ Built as spec'd in the Build Queue. Removes the app's only external dependency (
 - The v64 and v65 test suites were rerun against this build: all pass.
 - Not compared: pixel-for-pixel against the old version. Earlier test screenshots were taken with Google's fonts blocked, so they used fallback fonts and the text looks different by design. Not tested on a real phone.
 
+### Build Log 8 (completed): v67, offline cache (service worker)
+Built as spec'd in the Build Queue, with Jon's decisions: network-first with a 3-second fallback, a 1-hour cache-only window after a failed or timed-out request, background refresh after a slow response, offline cache only (not installable). Jon declined the proposed "end the window when the phone comes back online" idea.
+- [x] New `sw.js` in the repo root (scope: the whole site). Same-origin GET requests only. Tries the network with `cache: 'no-cache'` and a 3-second wait; on success it saves a copy in the cache and returns the response; on a timeout or a failed request it returns the saved copy. A page navigation with no copy of that exact URL falls back to the cached `index.html`.
+- [x] After one failed or timed-out request the worker serves from the cache only for 1 hour. The "skip until" time is stored as a small cache entry (`network-down-until`), because browsers wipe an idle worker's memory. If nothing is saved for a request, it still tries the network.
+- [x] When the 3-second limit fires, the network request keeps running in the background and its result is written to the cache (kept alive with `waitUntil`).
+- [x] One cache name constant (`stratosphere-cache-v1`); on activate, caches with any other name are deleted. `skipWaiting()` on install and `clients.claim()` on activate.
+- [x] New `js/register-sw.js`, loaded as the last `<script>` in `index.html` (no other script order changes). Registers `sw.js` on window `load`, guarded and with a `.catch`. On a first visit (page not yet controlled) it sends the worker the list of same-origin URLs the page loaded, so they are cached right away without a hand-kept file list.
+- [x] Left out, as spec'd: no manifest or icons (Build Planner item 4), no update banner, no background sync, no changes to the app's GPS or home-location code. Fonts needed nothing extra: they are cached like any other file.
+- [x] **Behavior to know about (found in testing, not changed because it follows the spec):** after a slow load that hits the 3-second limit, the page itself is refreshed in the cache in the background, but the 1-hour window means the scripts and CSS are not re-requested. The next load inside that hour therefore shows the new page with the older cached scripts, until the hour ends or the network answers a load normally. This needs an update pushed just before a slow load, and a reload does not clear it for up to an hour.
+
+**Verification:** headless Chromium at Pixel 7 size (412x915) against a local test server that sent `cache-control: max-age=600` like GitHub Pages, and could hang, go down, or serve a changed file.
+- First visit online: all 25 files the page loaded (HTML, CSS, 20 scripts, 3 fonts) were in the cache, the worker was active, and nothing external was requested. The browser's automatic `favicon.ico` request returns a 404 and is not cached.
+- Server unreachable: the page, map and loader load from the cache with zero JS errors, the saved home location restores, and a URL with a query string also loads. The failure set the 1-hour window (about 60 minutes left).
+- Update: with a changed `index.html` and a changed script on the server, one normal reload showed both new versions even with the 10-minute `max-age`, and the worker revalidated with the server.
+- Hanging server (connected, no internet): the page loaded from the cache after about 3.5 seconds; the next load inside the hour took about 0.6 seconds and made zero server requests; after rewriting the stored time into the past, the network was tried again and the update arrived.
+- Slow server (answers after 4.5 seconds): that load showed the saved page, and the page was refreshed in the cache in the background (this also showed the behavior noted above).
+- Service workers blocked, and a browser with no service worker support: the app loads normally with no errors.
+- The v64, v65 and v66 test suites were rerun against this build: all pass.
+- Not tested: a real phone, or real airplane Wi-Fi. A browser-side timing check only; the live GitHub Pages site is checked separately below.
+
 ## Build Queue
 
 Fully specified work that is waiting for a go-ahead. Items leave this list in the same commit that builds them.
 
-### 1. Offline cache (service worker)
-**Not yet authorized to build.**
-
-Promoted from the Build Planner (old item 8). Jon confirmed: network-first with a 3-second fallback, and offline cache only (not installable). Jon's expectation: no in-flight updating and no "update available" banner. A new version arrives when the page is next loaded with internet, and offline the app runs from its cache.
-
-- New file `sw.js` in the repo root, so its scope covers the whole site (on GitHub Pages that is `/Stratosphere/`). Plain JS, no build step.
-- New file `js/register-sw.js`, loaded as the last `<script>` in `index.html` (after `js/controls.js`; no other script order changes). It registers `sw.js` on window `load`, wrapped in a check for `'serviceWorker' in navigator` and a `.catch` so an unsupported or failed registration changes nothing about the app.
-- Fetch strategy (GET requests to the same origin only; anything else passes through untouched): try the network with a 3-second timeout; on success, store a copy in the cache and return the response; on failure or timeout, return the cached copy. For page navigations with no cached copy of that exact URL, fall back to the cached `index.html`.
-- Network-down window (Jon's call): if a network request gets no response from the server within 3 seconds, or fails outright, the worker stops trying the network for **1 hour** and serves everything from the cache, so a load with no signal never makes the user wait again. After the hour, the next load tries the network again. The "skip until" time is stored as a small entry in the cache, not in a variable, because browsers stop idle service workers and wipe their memory.
-- Slow connection: the 3-second limit covers the server starting to respond, not download time. When it fires, the worker serves the cached copy but lets the network request finish in the background and update the cache, so the next load is current.
-- The network fetch uses `cache: 'no-cache'` so the browser revalidates instead of reusing its own HTTP cache. GitHub Pages typically lets browsers reuse files for several minutes, which would otherwise delay an update past a single reload.
-- Single cache name constant in `sw.js`; on activate, delete caches with any other name. `skipWaiting()` on install and `clients.claim()` on activate, so the new worker takes over on the first reload.
-- First-visit rule: the very first page load finishes before the worker is active, so its files never pass through the fetch handler. To fix that without a hand-kept file list, `js/register-sw.js` sends the worker the list of same-origin URLs the page loaded (from `performance.getEntriesByType('resource')` plus the page URL) once the worker is ready, but only when the page was not already controlled by a worker. The worker fetches and caches them. Anything loaded later (for example a font used on a later screen) is cached by the normal fetch handler.
-- Not included: no manifest or icons (see Build Planner item 4), no update banner, no background sync, no changes to the app's own GPS or home-location code.
-- Test plan, at Pixel 7 size (412x915) against a local server (localhost counts as a secure context): load once online, wait for the cache to fill, go offline, reload, and confirm the map loads, the loader fades, there are zero JS errors, every script and the CSS came from the cache, and the home location still restores; change a served file, reload once online, and confirm the new version shows on that first reload; serve it with a long `max-age` header and confirm the new version still shows on the first reload; delay responses past 3 seconds and confirm the page loads from the cache after about 3 seconds, the cache is refreshed in the background once the network answers, and later loads make no network attempt until the hour has passed (and do try again after the stored time has passed); confirm the app works with the service worker unsupported or blocked; confirm nothing external is requested; rerun the v64/v65 home-location tests. Then recheck the live GitHub Pages site once after pushing.
-- Fonts: already self-hosted (Build Log 7), so they are cached like any other file.
-- Ships as: v67.
-
-### 2. Fix a stale comment about the cutscene runway color
+### 1. Fix a stale comment about the cutscene runway color
 **Not yet authorized to build.**
 
 Found while checking old Planner item 1: the cutscene runway is already medium grey (`#757575`), but a comment in `css/styles.css` still says it is black. Comment-only change, so no code or behavior is touched.
@@ -156,6 +158,6 @@ Ideas and known gaps with no committed design yet. Resolved, built, dropped or s
 ### Surfaced later
 4. **Installable app ("Add to Home Screen"):** split out of the offline-cache
    idea. Needs a web app manifest (name, theme color, standalone display) and
-   app icons, and builds on the offline cache (Build Queue 1). Not needed for
+   app icons, and builds on the offline cache (Build Log 8). Not needed for
    offline use, so parked for now. Open questions: icon design, whether it
    should share a look with a future Google Play version.
