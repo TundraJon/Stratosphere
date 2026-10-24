@@ -239,7 +239,7 @@
             height: 4px; /* BUG FIX: was 100% of the 60px strip, making the
                             whole runway alternate solid black/white bars
                             (zebra-crossing look) instead of a thin dashed
-                            centerline on solid black pavement */
+                            centerline on solid grey pavement */
             transform: translateY(-50%);
             /* background-position is set ONCE (not scrolled per-frame anymore)
                -- now that #cutscene-runway's own left/width are what move

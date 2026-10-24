@@ -126,20 +126,21 @@ Built as spec'd in the Build Queue, with Jon's decisions: network-first with a 3
 - Live GitHub Pages site (checked after the deploy, headless Chromium at Pixel 7 size): the worker registered with the site scope and activated; the first visit filled the cache with 25 entries (the page, the CSS, 20 scripts, 3 fonts); no JS errors and nothing requested outside the site. With the network fully switched off, a reload loaded the app from the cache in about 30 ms, the loader faded, the saved home location came back and the 🏠 drew.
 - Not tested: a real phone, or real airplane Wi-Fi.
 
+### Build Log 9 (completed): v68, fix a stale comment about the cutscene runway color
+Built as spec'd in the Build Queue. Comment-only change: no code or behavior touched.
+- [x] `css/styles.css`, line 242 (the last line of the `BUG FIX` comment on `#cutscene-runway-dashes`): `black` changed to `grey`, so it reads `centerline on solid grey pavement */`.
+- [x] Left alone, as spec'd: the earlier line in the same comment ("alternate solid black/white bars"), which describes how the old bug looked. No other file or line changed.
+
+**Verification:**
+- `git diff` shows exactly one changed line (one removed, one added), inside a comment.
+- Headless Chromium at Pixel 7 size (412x915): zero JS errors, and the takeoff cutscene's runway still renders `rgb(117, 117, 117)` (`#757575`).
+- The page-load part of the fonts test was rerun: passes.
+
 ## Build Queue
 
 Fully specified work that is waiting for a go-ahead. Items leave this list in the same commit that builds them.
 
-### 1. Fix a stale comment about the cutscene runway color
-**Not yet authorized to build.**
-
-Found while checking old Planner item 1: the cutscene runway is already medium grey (`#757575`), but a comment in `css/styles.css` still says it is black. Comment-only change, so no code or behavior is touched.
-
-- Where: `css/styles.css`, line 242, the last line of the `BUG FIX` comment on `#cutscene-runway-dashes`: `centerline on solid black pavement */`.
-- What: change the one word `black` to `grey`, so it reads `centerline on solid grey pavement */`. Nothing else on that line or in that comment changes.
-- Not included: the earlier line in the same comment ("alternate solid black/white bars") describes how the old bug looked and stays as written. No other file or line is touched.
-- Test plan: `git diff` shows exactly one changed line, inside a comment; load check at Pixel 7 size (412x915) with no errors; play the takeoff cutscene and confirm the runway still renders grey (`rgb(117, 117, 117)`).
-- Ships as: v68.
+_Empty — nothing queued right now._
 
 ## Build Planner
 
