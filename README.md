@@ -142,12 +142,6 @@ Found while checking old Planner item 1: the cutscene runway is already medium g
 
 Ideas and known gaps with no committed design yet. Resolved, built, dropped or superseded items are deleted from here, and their history lives in the Build Log.
 
-### From the handoff doc
-2. **Cutscene background gradient gap:** the main map uses scattered-dot
-   seasons, but the cutscene likely still uses a plain gradient
-   - Low value now: the automatic cutscene trigger is disabled
-     (the manual test buttons still run it)
-
 ### Surfaced in earlier sessions
 4. **GPS-noise tuning after your flight test:** 60 ft lateral margin,
    150 ft along-track margin, 7° alignment, 50 mph threshold.
