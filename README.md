@@ -152,6 +152,22 @@ Promoted from the Build Planner (Wyoming's dates). Jon's reason: Wyoming typical
 - Test plan: `git diff` shows exactly one changed line, in `js/seasonal.js`; in the page, check `getActiveSeasonColors('Wyoming', date)` for Sep 20, Sep 21, Oct 10, Oct 11, Oct 20, Oct 21, Nov 15, Dec 2, Apr 20, Apr 21, Jun 30 and Jul 1, and confirm no date in the whole year returns the dead-time season for Wyoming; compare every day of the year for all other states against the previous version and confirm nothing else changed; load check at Pixel 7 size (412x915) with zero errors.
 - Ships as: v69.
 
+### 2. Installable app (manifest and icons)
+**Not yet authorized to build.**
+
+Promoted from the Build Planner (installable app). Jon chose the icon (his globe image, with the fake transparency removed and the edge cleaned up) and said "your defaults" for everything else. Android and iPhone.
+
+- Icon files, new `icons/` folder, made from Jon's globe image (503x543 JPEG; the globe itself is 386 px across). The globe is cut out with a truly transparent background and a smooth circular edge (fitted circle: center 247, 292.5 and radius 190.5 in the source image).
+  - `icons/icon-192.png` and `icons/icon-512.png`: Android, transparent, globe at 94% of the canvas.
+  - `icons/icon-maskable-512.png`: Android adaptive icon, opaque, globe at 70% of the canvas (inside the 80% safe circle) on a deep-navy radial gradient (center `#17407a`, edge `#050b1c`) with a soft shadow under the globe.
+  - `icons/apple-touch-icon-180.png`: iPhone, opaque (iOS shows transparency as black), same backdrop, globe at 76%. iOS rounds the corners itself.
+- New `manifest.webmanifest` in the repo root: `name` and `short_name` both "Stratosphere"; `description` "Track your in-flight status"; `start_url` and `scope` `./`; `display` `standalone`; `background_color` and `theme_color` both `#0d0e12` (the night-mode page background); `icons`: the 192 and 512 files as `any` and the maskable 512 as `maskable`. No `orientation` entry *(my default)*, so rotation behaves as it does in the browser today.
+- `index.html` `<head>`: add `<link rel="manifest" href="manifest.webmanifest">`, `<meta name="theme-color" content="#0d0e12">`, `<link rel="apple-touch-icon" href="icons/apple-touch-icon-180.png">`, `<meta name="apple-mobile-web-app-capable" content="yes">` and `<meta name="apple-mobile-web-app-title" content="Stratosphere">`. Nothing else in the file changes. No iOS status-bar-style tag *(my default)*, so iOS keeps its normal status bar.
+- Not included: no orientation lock; no theme color that changes with day or night mode; no in-app "Install" button; no iOS splash screens; no 1024 px App Store icon (the source image is too small for a sharp one); no browser-tab favicon (the site has none today); no app code changes.
+- Source files: the icon PNGs were made in this session's scratch folder, which does not survive the session. If this is built in a later session, Jon re-supplies the five PNGs (he downloaded them) or the original globe image, and they are rebuilt with the recipe above.
+- Test plan, at Pixel 7 size (412x915) against a local server: `manifest.webmanifest` is valid JSON and every icon path in it returns 200 with the right type; each PNG has the size it claims; the maskable and Apple icons are fully opaque and the 192/512 icons have transparent corners; Chrome's own installability check (DevTools protocol `Page.getInstallabilityErrors`) reports no errors and `Page.getAppManifest` parses the manifest with no warnings; the page loads with zero JS errors and the existing offline cache, home-location, fonts and button suites still pass. After the push, repeat the installability check on the live GitHub Pages site and confirm the icons load there. Jon then tries "Install app" from Chrome's menu on his phone.
+- Ships as: v70.
+
 ## Build Planner
 
 Ideas and known gaps with no committed design yet. Resolved, built, dropped or superseded items are deleted from here, and their history lives in the Build Log.
@@ -164,10 +180,3 @@ Ideas and known gaps with no committed design yet. Resolved, built, dropped or s
    values to watch.
 2. **Track-Up mode never gets the idle-snapshot caching:** a limitation,
    not a regression
-
-### Surfaced later
-3. **Installable app ("Add to Home Screen"):** split out of the offline-cache
-   idea. Needs a web app manifest (name, theme color, standalone display) and
-   app icons, and builds on the offline cache (Build Log 8). Not needed for
-   offline use, so parked for now. Open questions: icon design, whether it
-   should share a look with a future Google Play version.
