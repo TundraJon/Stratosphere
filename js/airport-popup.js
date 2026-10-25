@@ -31,12 +31,12 @@
 
     function closeAirportPopup() {
         // If this was showing the current destination and we're still
-        // within the 1nm auto-trigger radius, record the dismissal so the
+        // within the 2nm auto-trigger radius, record the dismissal so the
         // auto-open logic doesn't immediately re-open it -- it re-arms
         // once the plane clears 9nm or 20 minutes pass, whichever's first.
         if (STATE.airportPopup.airport && STATE.airportPopup.airport.name === STATE.target.name) {
             const distNm = getDistance(STATE.plane.lat, STATE.plane.lon, STATE.target.lat, STATE.target.lon);
-            if (distNm <= 1) {
+            if (distNm <= AUTO_TRIGGER_RADIUS_NM) {
                 STATE.airportPopup.autoTriggerDismissedFor = STATE.target.name;
                 STATE.airportPopup.autoTriggerDismissedAt = Date.now();
             }

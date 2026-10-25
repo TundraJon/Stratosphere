@@ -296,21 +296,25 @@ Built as spec'd in the Build Queue. Jon: the destination's black "≡---" runway
 - Not tested: a real phone, and how the pin looks in Apple's emoji font (the glyph is measured at run time, so the tip placement should hold).
 - Observed, unchanged: tapping the pin at its horizontal centre, just above the tip, also opens the popup, because the code text's tap area starts 2 px left of the airport and reaches up 31 px. That area was not changed.
 
+### Build Log 20 (completed): v79, auto-open the airport approach screen at 2 NM instead of 1 NM
+Built as spec'd in the Build Queue. Jon expected the approach and landing screen to open at 2 NM, but it opened as the plane passed over the end of the runway: the code (and the v62 note in Build Log 1) said 1 NM, measured from the destination's listed position, which on a long runway is about where the runway end is.
+- [x] `js/cutscene.js`: `AUTO_TRIGGER_RADIUS_NM` changed from `1` to `2`, and the comment above it (`1nm`) to `2nm`.
+- [x] `js/airport-popup.js`, `closeAirportPopup()`: its own hard-coded `if (distNm <= 1)` (which decides whether to record a dismissal) is now `if (distNm <= AUTO_TRIGGER_RADIUS_NM)`, so the two can never disagree; its `1nm` comment is now `2nm`. This second place is the catch: with only the constant changed, closing the popup between 1 and 2 NM would not record the dismissal and the popup would pop straight back open. Demonstrated on a scratch copy with only the constant changed: the popup opened at 1.5 NM, and after closing it was open again within 1 second.
+- [x] `js/state.js`: the `1nm` comment on `autoTriggerDismissedFor` is now `2nm`. A search of `js/` finds no other `1nm` or `<= 1` leftover.
+- [x] Left out, as spec'd: the re-arm distance (9 NM) and re-arm time (20 minutes) are unchanged; the distance is still measured to the destination's listed position, not to the runway end; manually opening the popup by tapping is unchanged.
+
+**Verification:** headless Chromium at 412x915, no real GPS, with the plane placed at set distances from the destination (placing it 1.9 NM away measures 1.901 NM with the app's own distance function) and the previous version (v78) tested alongside.
+- Opens or not by distance, v78 against this build: 3.0 NM no and no; 2.5 NM no and no; 2.1 NM no and no; 1.9 NM no and yes; 1.5 NM no and yes; 0.9 NM yes and yes; 0.5 NM yes and yes. So v78 reproduces the 1 NM behavior, and the new version opens only within 2 NM.
+- Closing the popup at 1.5 NM records the dismissal for that destination, and it does not reopen by itself (also not at 1.9 NM). After 10 minutes it is still dismissed; after 21 minutes it re-arms and opens again. Moving beyond 9 NM clears the dismissal, and it opens again at 1.9 NM. Picking a different destination is not blocked by the old dismissal. Manually tapping the destination's code text still opens the popup from 30 NM away. Zero JS errors.
+- The v64 to v78 test suites, and the altitude and pin tests, were rerun: all pass (the pin test's "black glyph is gone" comparison is only meaningful against a version that still has the glyph, so it no longer applies now that the previous version is already glyph-free).
+- Live GitHub Pages site: the whole group of builds (v74 to v79) is checked together once after this push; the result is recorded below.
+- Not tested: a real approach on a real phone.
+
 ## Build Queue
 
 Fully specified work that is waiting for a go-ahead. Items leave this list in the same commit that builds them.
 
-### 1. Auto-open the airport approach screen at 2 NM instead of 1 NM
-**Not yet authorized to build.**
-
-Jon expected the approach and landing screen to open at 2 NM, but it opened as the plane passed over the end of the runway. The code (and the v62 note in Build Log 1) says 1 NM, measured from the destination's listed position (the airport reference point), which on a long runway is about where the runway end is. The 2 NM Jon remembers was the old runway glyph's orientation lock, which Queue item 5 removes.
-
-- `js/cutscene.js`: `const AUTO_TRIGGER_RADIUS_NM = 1;` becomes `2`, and the comment above it (`1nm`) becomes `2nm`.
-- `js/airport-popup.js`, `closeAirportPopup()`: it has its own hard-coded `if (distNm <= 1)` that decides whether to record a dismissal. Change it to `if (distNm <= AUTO_TRIGGER_RADIUS_NM)` (the constant lives in `js/cutscene.js` and is read when the function runs) so the two can never disagree. If only the constant changed, closing the popup between 1 and 2 NM would not record the dismissal and the popup would pop straight back open. Update the `1nm` comment there too.
-- `js/state.js`: the `1nm` comment on `autoTriggerDismissedFor` becomes `2nm`.
-- Unchanged: the re-arm distance (9 NM) and re-arm time (20 minutes); the distance is still measured to the destination's listed position, not to the runway end; manually opening the popup by tapping.
-- Test plan, at 412x915 with the plane placed at set distances from the destination and a faked clock: the popup does not open at 2.5 NM or 2.1 NM and opens at 1.9 NM and at 1.0 NM; closing it at 1.5 NM records the dismissal and it does not reopen; it reopens after the plane clears 9 NM, and after 20 minutes; picking a new destination is not blocked by an old dismissal; no JS errors; rerun the earlier suites; repeat on the live site.
-- Ships as: v79.
+_Empty — nothing queued right now._
 
 ## Build Planner
 

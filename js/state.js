@@ -49,7 +49,7 @@
             snapStartTime: null,   // performance.now() timestamp, or null if no snap in progress
             snapFromBlend: 0,      // blend value captured at the moment a snap begins
             lockedRunway: null,    // whichever runway the plane is currently on (or was just on, kept through a departure snap-out so it has something to reference) -- null once fully settled in Overview
-            // Auto-open at 1nm from the destination. Manually dismissing it
+            // Auto-open at 2nm from the destination. Manually dismissing it
             // blocks re-triggering for THAT SAME destination until the
             // plane clears 9nm or 20 minutes pass, whichever first --
             // scoped to a specific airport name so picking a new,

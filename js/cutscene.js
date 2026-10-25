@@ -531,11 +531,11 @@
     }
 
     // Auto-opens the runway popup for the current destination once within
-    // 1nm, unless it was recently manually dismissed for this same
+    // 2nm, unless it was recently manually dismissed for this same
     // destination (see closeAirportPopup's dismissal recording) and hasn't
     // yet re-armed (cleared 9nm from the destination, or 20 minutes have
     // passed since the dismissal -- whichever happens first).
-    const AUTO_TRIGGER_RADIUS_NM = 1;
+    const AUTO_TRIGGER_RADIUS_NM = 2;
     const AUTO_TRIGGER_REARM_RADIUS_NM = 9;
     const AUTO_TRIGGER_REARM_MINUTES = 20;
     function checkAutoTriggerAirportPopup() {
