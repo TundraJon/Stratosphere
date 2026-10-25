@@ -186,6 +186,31 @@ Found while testing Build Log 11 (it comes from the file split in Build Log 2). 
 - Test plan, at Pixel 7 size (412x915): `git diff` shows exactly two changed lines; first reproduce the problem on the current version with resize events forced during loading (one every 2 ms for about 0.8 s) and with a local server that delays each script by a random 50 to 300 ms to widen the window, then run the same on the fixed version, 20 or more loads each in a normal profile and in a plain context, and expect zero page errors and zero loads where the loading screen sticks (before the fix: errors in 3 of 14 and 2 of 14 forced-resize loads, one stuck load in 8 stress loads, 1 error in 30 plain loads); 60 plain loads with no forcing, zero errors; after loading, a window resize still re-fits the canvas, and the animation loop still runs (the telemetry and plane keep updating); rerun the v64 to v70 test suites; load check with no errors; after the push, repeat the load and offline checks on the live GitHub Pages site.
 - Ships as: v71.
 
+### 2. Fix the airport popup close button (move it to the corner, bigger tap area)
+**Not yet authorized to build.**
+
+Reported by Jon from a real phone: the close × sits in the middle of the popup's title row, on top of "(Orlando, FL)", instead of in the top-right corner. Jon asked for a bigger tap area too.
+
+- Cause (reproduced in a phone-sized browser): a global style, `select, input, button { width: 100%; ... }` in `css/styles.css`, stretches every button to full width. The popup's close button has `position: absolute; right: 8px` inline but no width, so it becomes a 377 px strip across the whole header and its × glyph is centered in the middle of it. It also means a tap anywhere on the title row closes the popup today.
+- Where: `index.html`, the close button inside `#airport-popup-panel`'s header (the one that calls `closeAirportPopup()`).
+- What: in that button's inline style, change `top: 6px; right: 8px;` to `top: 0; right: 0; width: 48px; height: 100%;` and change `padding: 0 4px;` to `padding: 0;`. Everything else in the style (`position: absolute`, `background: none`, `border: none`, `font-size: 22px`, `color`, `cursor`, `line-height: 1`) stays. The inline `width` overrides the global 100%, and the button text centers itself in the 48 px strip, so the × sits about 24 px from the right edge (about 18 px before) and the tap area becomes 48 px wide by the full header height (about 37 px), up from about 26 by 22 px for the glyph alone.
+- Not included: the header's size, padding and look do not change; the title's existing right padding (40 px) keeps the text clear of the × glyph; no other button is touched; tapping outside the popup (the dark overlay) still closes it, as today. The global `button` style is not changed.
+- Test plan, phone-sized (412x915, 2.25 pixel ratio): the button's right edge equals the header's right edge, it is 48 px wide and as tall as the header, and the header's height is unchanged; the × glyph is within 30 px of the right edge; tapping the middle of the title no longer closes the popup; tapping the × and tapping 40 px from the right edge both close it; the glyph never overlaps the title text, checked with the longest airport name in the list; the popup still draws its runways; screenshot checked by eye; rerun the earlier test suites; after the push, repeat the check on the live GitHub Pages site.
+- Ships as: v72.
+
+### 3. Remember the destination airport between launches
+**Not yet authorized to build.** Items marked *(proposed)* are my defaults and still need Jon's OK.
+
+Reported by Jon: the destination airport he selected gets lost after he moves to another app for a while, and it used to stay for days.
+
+- Cause: the destination only lives in memory. `STATE.target` starts as KMCO on every launch (`js/state.js`), `handleAirportSelect()` (`js/controls.js`) changes it, and nothing saves it. The original single-file app never saved it either, so it could only last as long as the page stayed loaded. When Android reloads or discards a page you left in the background (Jon had 72 tabs open in his screenshot), it comes back as MCO. *(To confirm with Jon: does the radar loading screen show when he returns? If it does, the page was reloaded.)*
+- Storage: browser `localStorage`, key `stratosphere.destination`, holding the airport's `name` string (for example `KMCO (Orlando, FL)`). Every read and write inside `try/catch`, same as the home location.
+- Save: in `handleAirportSelect()` right after `STATE.target = ap`.
+- Restore: a new `loadDestination()` in `js/controls.js`, run on `DOMContentLoaded` (registered after `populateAirports`, so the dropdown already exists). It finds the dropdown option whose airport name matches the saved name; if found, it sets the dropdown to it and sets `STATE.target` to that airport. It does not call `handleAirportSelect()`, which also sets the plane speed to 460 and resets the runway lock, neither of which should happen at launch. It sets `STATE.render.cacheValid = false` before `draw()`, for the same reason as the home-location fix (the cached map layer skips drawing the destination's label). A missing, unreadable, or no-longer-listed saved name leaves the default (KMCO).
+- Not included *(proposed)*: no other settings are saved (day/night mode, map layers, speed unit); the way selecting a destination works does not change.
+- Test plan, phone-sized: pick a different destination, reload, and confirm the dropdown, "EN ROUTE TO" and the map marker show it; confirm the plane speed is not set to 460 on restore; a saved name that is not in the list, a corrupt value, and blocked storage all fall back to KMCO with no errors; a fresh profile still starts on KMCO; with the Airports layer on, the restored destination is drawn once, not twice; rerun the earlier suites (home location, button, fonts, offline cache, installable app); after the push, repeat on the live site, including an offline reload.
+- Ships as: v73.
+
 ## Build Planner
 
 Ideas and known gaps with no committed design yet. Resolved, built, dropped or superseded items are deleted from here, and their history lives in the Build Log.
