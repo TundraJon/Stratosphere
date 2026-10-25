@@ -15,6 +15,9 @@
         // logic will gradually bring the plane onto the new course on its own.
         STATE.plane.speed = 460;
 
+        // The cached map layer skips drawing the destination's label, so it
+        // must be rebuilt for the new destination.
+        STATE.render.cacheValid = false;
         draw();
     }
 

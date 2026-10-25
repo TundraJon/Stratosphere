@@ -218,25 +218,24 @@ Built as spec'd in the Build Queue. Reported by Jon: the destination airport he 
 - Not tested: a real phone, and the "app in the background for a while" case itself (only page reloads).
 - **Existing behavior found while testing, not changed here:** when the Airports layer is on and the view is idle, picking a destination in the dropdown leaves the cached map layer out of date (it does not match a full rebuild) until the view changes, the same kind of problem as the home-location fix in Build Log 5. The cached layer skips drawing the destination's label, so the previous destination's label can be missing and the new one drawn twice until you pan or zoom. A one-line `STATE.render.cacheValid = false;` in `handleAirportSelect()` would fix it. It was not in this build's spec.
 
+### Build Log 15 (completed): v74, fix the stale map layer after picking a destination
+Built as spec'd in the Build Queue (found while testing Build Log 14; the same kind of problem as the home-location fix in Build Log 5). Jon's intent: the Airports layer's own label must never show for the selected destination, because the destination already has its own label.
+- [x] `js/controls.js`, `handleAirportSelect()`: added `STATE.render.cacheValid = false;` right before the final `draw();`, with a two-line comment saying why. That is the only code change (3 added lines); `js/live-layer.js` was not touched.
+- [x] Cause: the cached map layer skips drawing the current destination's label (the live layer draws it), but the cache's change check does not include the destination, so picking a new one reused the old snapshot. Visible effect: the previous destination's label (MCO) was missing and the new one (DEN) was drawn twice, slightly ghosted, until the view changed.
+- [x] Left out, as spec'd: no other state missing from the cache check; the destination-restore code from Build Log 14 already did this; no change to how picking a destination otherwise works.
+
+**Verification:** headless Chromium at 412x915 with a 2x pixel ratio, the previous version (v73) against the fixed version. The cached map layer (which has no plane in it) was compared with a forced full rebuild after each pick, with the Airports layer on and the view idle.
+- Reproduced first: on v73 all 3 picks in a row (Denver, Seattle, Miami) left the cached layer different from a full rebuild.
+- After the fix: 0 mismatches after each of the 3 picks in a row. A before and after screenshot shows the MCO label back near Orlando and DEN drawn once.
+- Airports layer off: picking a destination works as before (DEN and KDEN), no errors.
+- The v64, v65, v66, v67, v70, v71, v72 and v73 test suites were rerun: all pass. (The popup test had two outdated assertions of its own: a strict height check and a check that the old version still had the bug; both were corrected in the test.)
+- Not tested: a real phone. The live site is checked once at the end of this group of builds (see the last Build Log in the group).
+
 ## Build Queue
 
 Fully specified work that is waiting for a go-ahead. Items leave this list in the same commit that builds them.
 
-### 1. Fix the stale map layer after picking a destination
-**Not yet authorized to build.**
-
-Found while testing Build Log 14 (it is an existing problem, the same kind as the home-location fix in Build Log 5). Jon asked for it to be logged.
-
-- Symptom (reproduced at 412x915 with the Airports layer on, the view idle, and a pick of Denver while the destination was Orlando): the previous destination's label (MCO) is missing and the new destination's label (DEN) is drawn twice, slightly ghosted, until the view changes (pan, zoom or a toggle). A full redraw shows MCO back and DEN once.
-- Jon's intent (restated later): the Airports layer's own label must never show for the selected destination, because the destination already has its own label. The code already skips it; this stale layer is the only way both show.
-- Cause: the cached map layer skips drawing the label of the current destination (the live layer draws that one), but the cache's change check in `draw()` (`js/live-layer.js`) does not include the destination, so picking a new one reuses the old snapshot.
-- Where: `js/controls.js`, `handleAirportSelect()`.
-- What: add `STATE.render.cacheValid = false;` on its own line right before the function's final `draw();`, with a one-line comment saying why (the cached map layer skips drawing the destination's label, so it must be rebuilt). Same one-line approach as the home-location fix. `js/live-layer.js` is not touched.
-- Not included: no other state that is missing from the cache check is changed; the destination-restore code from Build Log 14 already does this and is not touched; no changes to how picking a destination otherwise works.
-- Test plan, at 412x915 with a 2x pixel ratio: first reproduce on the current version, that is, with the Airports layer on and the view idle, pick a new destination and compare the cached map layer (the cache canvas, which has no plane in it) with a forced full rebuild; they differ today. After the fix they must match after one pick and after several picks in a row (three different destinations); a before and after screenshot shows MCO's label back and DEN drawn once; with the Airports layer off, nothing changes; rerun the destination save and restore tests (Build Log 14) and the earlier suites; after the push, repeat the check on the live GitHub Pages site.
-- Ships as: v74.
-
-### 2. Stop Chrome restoring the destination dropdown on its own
+### 1. Stop Chrome restoring the destination dropdown on its own
 **Not yet authorized to build.**
 
 Reported by Jon from a real phone: the Flight Info shows MCO but the Settings destination dropdown shows BNA. Changing to another airport updates the Flight Info at once, and changing back to BNA shows BNA in the Flight Info (Jon confirmed), so selecting works and only the state after returning to the app is wrong.
@@ -250,7 +249,7 @@ Reported by Jon from a real phone: the Flight Info shows MCO but the Settings de
 - Test plan, at 412x915 with Chrome's back-forward cache disabled: first reproduce on the current version (pick BNA, remove the saved value, leave the page and come back through history: dropdown shows BNA while Flight Info shows MCO); then confirm after the change that the dropdown and Flight Info match in the same test (both MCO), and that with a saved destination both show it (both BNA); a normal reload still keeps them in step; `git diff` shows exactly one changed line; rerun the destination tests (Build Log 14) and the earlier suites; after the push, repeat the history-style check on the live GitHub Pages site.
 - Ships as: v75.
 
-### 3. Altitude diagnostic readout (raw readings in Settings)
+### 2. Altitude diagnostic readout (raw readings in Settings)
 **Not yet authorized to build.** Items marked *(proposed)* are my defaults and still need Jon's OK.
 
 Jon's altitude reports: the readout swings between about 7,000 and 38,000 ft, and during takeoff and descent it is far too low (about 800 ft while the captain announces 10,000). Smoothing lag (a median of up to 5 readings over 60 s) is far too small to explain a 9,000 ft gap. Working guess, not yet confirmed: the phone's altitude sometimes comes from its barometer (cabin pressure, which is far below the aircraft's altitude during a climb and sits around 7,000 ft at cruise) and sometimes from GPS (about 38,000 ft at cruise), and the app cannot tell which. This readout shows the raw numbers so the next flight can confirm or kill that guess. Jon approved logging it.
@@ -262,7 +261,7 @@ Jon's altitude reports: the readout swings between about 7,000 and 38,000 ft, an
 - Test plan, at 412x915: feed synthetic fixes through `onGPSSuccess()` (altitude, accuracy and speed present; altitude missing; accuracy missing) and check the lines render exactly as described; the log is capped at 30 entries and the display at 12; the shown altitude (`val-altitude`) is identical to the previous version for the same inputs; open the Settings drawer and check the layout by eye (it already scrolls); zero JS errors; rerun the earlier suites; after the push, repeat on the live GitHub Pages site.
 - Ships as: v76.
 
-### 4. Altitude: require 3 consistent readings before the shown value changes
+### 3. Altitude: require 3 consistent readings before the shown value changes
 **Not yet authorized to build.** Items marked *(proposed)* are my defaults and still need Jon's OK. Build after item 3 so the next flight shows what the raw readings really look like.
 
 Jon's rule: the shown altitude should only change after 3 relatively consistent readings, within a few hundred feet at most. Today there is no such rule: `onGPSSuccess()` takes the median of however many readings under 60 s old are in a 5-reading buffer, so with one or two fresh readings a single spike goes straight to the screen, and three bad readings out of five win.
@@ -277,7 +276,7 @@ Jon's rule: the shown altitude should only change after 3 relatively consistent 
 - Test plan: feed synthetic fixes through `onGPSSuccess()` with a faked clock: steady 35,000 ft within 50 ft is shown after 3 readings; a single 7,000 ft spike among 35,000 ft readings never reaches the screen; two spikes in a row never reach the screen; alternating 7,000 and 38,000 holds the last good value and then shows `--` after 60 s; a steady 3,000 ft/min climb (150 ft per poll) follows the readings; a genuine step to a new level shows after 3 readings at that level; missing altitudes are skipped; the first display needs 3 readings; no JS errors; rerun the earlier suites; repeat on the live site.
 - Ships as: v77.
 
-### 5. Replace the destination runway glyph with a 📍 and remove its orientation code
+### 4. Replace the destination runway glyph with a 📍 and remove its orientation code
 **Not yet authorized to build.** Items marked *(proposed)* are my defaults and still need Jon's OK.
 
 Jon: the destination's black "≡---" runway glyph is no longer needed, a simple 📍 is fine, and the code that orients the glyph should go too. Jon chose to put the pin's tip exactly on the airport. Jon clarified that the destination's 3-letter code text is the tap target he wants for opening the runway layout screen, and that this already works; what makes it hard to hit is another word sitting on top of it (the doubled label from Queue item 1). So the tap target does not change.
@@ -289,7 +288,7 @@ Jon: the destination's black "≡---" runway glyph is no longer needed, a simple
 - Test plan, at 412x915: the pin is drawn at the destination and its tip is within 2 px of the airport's projected position at several zoom levels; no black runway box is drawn near the destination; the pin keeps a constant size when zooming and stays upright in Track-Up; picking another destination moves it; the label does not overlap the pin badly (by eye, with a screenshot); tapping the 3-letter code text still opens the airport popup, as today, at several zoom levels and in Track-Up; a search of `js/` finds no remaining use of `runwayLocked`, `runwayLockedBearing`, `runwayGlyphFontPx` or the glyph's bearing code; rerun the earlier suites; repeat on the live site.
 - Ships as: v78.
 
-### 6. Auto-open the airport approach screen at 2 NM instead of 1 NM
+### 5. Auto-open the airport approach screen at 2 NM instead of 1 NM
 **Not yet authorized to build.**
 
 Jon expected the approach and landing screen to open at 2 NM, but it opened as the plane passed over the end of the runway. The code (and the v62 note in Build Log 1) says 1 NM, measured from the destination's listed position (the airport reference point), which on a long runway is about where the runway end is. The 2 NM Jon remembers was the old runway glyph's orientation lock, which Queue item 5 removes.
