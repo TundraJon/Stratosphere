@@ -273,6 +273,18 @@
         // below, which is exactly the "freeze at last known value" behavior.
         const instAltitudeFt = (pos.coords.altitude != null && !isNaN(pos.coords.altitude)) ? pos.coords.altitude * 3.28084 : null;
 
+        // Read-only log of the raw numbers the phone reports, for the Settings
+        // altitude diagnostics (see updateAltitudeDiag). Does not feed any
+        // calculation. Speed here is the device-reported value only, before
+        // any computed fallback below.
+        STATE.gps.rawAltitudeLog.push({
+            t: Date.now(),
+            ft: instAltitudeFt,
+            accM: (pos.coords.altitudeAccuracy != null && !isNaN(pos.coords.altitudeAccuracy)) ? pos.coords.altitudeAccuracy : null,
+            kts: instSpeedKts
+        });
+        if (STATE.gps.rawAltitudeLog.length > 30) STATE.gps.rawAltitudeLog.shift();
+
         // Fall back to computing heading/speed from the change since the last
         // fix, if the device didn't report them directly.
         if (lastGpsFix) {
@@ -365,6 +377,7 @@
         STATE.gps.lastFixError = null;
         updateGpsStatusDot();
         updateAltitudeStatusDot();
+        updateAltitudeDiag();
     }
 
     function onGPSError(err) {
@@ -412,6 +425,27 @@
     function updateAltitudeStatusDot() {
         const el = document.getElementById('altitude-status-dot');
         if (el) el.textContent = altitudeStatusEmoji();
+    }
+
+    // Settings > Altitude diagnostics: what the app is showing, plus the
+    // newest 12 raw readings exactly as the phone reported them, so a flight
+    // can show whether the altitude comes from more than one source. Read-only.
+    function updateAltitudeDiag() {
+        const el = document.getElementById('alt-diag');
+        if (!el) return;
+        const fresh = STATE.gps.recentAltitudes.filter(r => Date.now() - r.time <= 60000).length; // same 60s window as the median
+        const shown = STATE.plane.altitude !== null ? STATE.plane.altitude.toLocaleString() + ' ft' : '--';
+        const pad2 = n => String(n).padStart(2, '0');
+        const lines = ['Shown: ' + shown + '   fresh readings: ' + fresh];
+        STATE.gps.rawAltitudeLog.slice(-12).reverse().forEach(r => {
+            const d = new Date(r.t);
+            const time = pad2(d.getHours()) + ':' + pad2(d.getMinutes()) + ':' + pad2(d.getSeconds());
+            const alt = r.ft === null ? 'no altitude' : Math.round(r.ft).toLocaleString() + ' ft';
+            const acc = '±' + (r.accM === null ? '--' : Math.round(r.accM)) + ' m';
+            const kts = (r.kts === null ? '--' : Math.round(r.kts)) + ' kt';
+            lines.push(time + '  ' + alt.padStart(11) + '  ' + acc.padEnd(7) + '  ' + kts);
+        });
+        el.textContent = lines.join('\n');
     }
 
     // Real single-point sun-elevation check -- same math the terminator
@@ -475,4 +509,5 @@
     updateGpsStatusDot();
     setInterval(updateGpsStatusDot, 2000);
     updateAltitudeStatusDot();
+    updateAltitudeDiag();
     setInterval(updateAltitudeStatusDot, 2000);

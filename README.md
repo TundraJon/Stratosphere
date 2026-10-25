@@ -245,23 +245,26 @@ Built as spec'd in the Build Queue. Reported by Jon from a real phone: the Fligh
 - The v64 to v74 test suites were rerun: all pass.
 - Not tested: a real phone.
 
+### Build Log 17 (completed): v76, altitude diagnostic readout (raw readings in Settings)
+Built as spec'd in the Build Queue. Jon's altitude reports: the readout swings between about 7,000 and 38,000 ft, and during takeoff and descent it is far too low (about 800 ft while the captain announces 10,000). Working guess, not yet confirmed: the phone's altitude sometimes comes from its barometer (cabin pressure) and sometimes from GPS. This readout shows the raw numbers so the next flight can confirm or rule that out.
+- [x] `js/state.js`: new `rawAltitudeLog: []` in the `gps` object.
+- [x] `js/controls.js`, `onGPSSuccess()`: for every fix (including fixes with no altitude) it pushes `{ t, ft, accM, kts }` (time, raw altitude in feet or null, `altitudeAccuracy` in meters or null, and the device-reported speed in knots or null, taken before any computed fallback) and keeps the newest 30. This is logging only; nothing in the altitude calculation reads it.
+- [x] `js/controls.js`: new `updateAltitudeDiag()`, called at the end of `onGPSSuccess()` and once at startup (so the header line is there before the first fix); it does nothing if the element is missing.
+- [x] `index.html`: new "Altitude diagnostics" group in the Settings drawer, directly under the Testing group, with one monospace block `id="alt-diag"` (10 px, muted color, `white-space: pre`). First line: `Shown: 34,990 ft   fresh readings: 5` (the current shown altitude or `--`, and how many buffered readings are under 60 s old). Then the newest 12 raw readings, newest first: time as `HH:MM:SS`, raw altitude (`35,010 ft` or `no altitude`), accuracy (`±8 m` or `±-- m`) and speed (`443 kt` or `-- kt`).
+- [x] Left out, as spec'd: no change to how the shown altitude is computed (Queue item 3 below, the 3-reading rule); the log is in memory only, so a page reload restarts it; no copy or export button; nothing is saved to `localStorage`.
+
+**Verification:** headless Chromium at 412x915 with a 2x pixel ratio and no real GPS (permission denied), feeding 33 synthetic fixes through `onGPSSuccess()` with a controlled clock (cruise readings, a fix with no altitude, an odd 7,050 ft reading with no speed, and readings with and without accuracy).
+- The shown altitude is identical to the previous version (v75) after each of the 33 fixes, so the calculation is unchanged.
+- The readout has the header plus exactly 12 reading lines, newest first (35,010 ft on top, 34,900 ft at the bottom); every line matches the format; a missing accuracy shows `±-- m`, a missing speed shows `-- kt`, and a fix with no altitude shows `no altitude`. The log is capped at 30 entries.
+- In the Settings drawer at phone size the readout fits the width (no sideways scrolling) and reads clearly in a screenshot. Zero JS errors in both versions.
+- The v64 to v75 test suites were rerun: all pass.
+- Not tested: a real phone, and real in-flight readings (that is the point of the next flight).
+
 ## Build Queue
 
 Fully specified work that is waiting for a go-ahead. Items leave this list in the same commit that builds them.
 
-### 1. Altitude diagnostic readout (raw readings in Settings)
-**Not yet authorized to build.** Items marked *(proposed)* are my defaults and still need Jon's OK.
-
-Jon's altitude reports: the readout swings between about 7,000 and 38,000 ft, and during takeoff and descent it is far too low (about 800 ft while the captain announces 10,000). Smoothing lag (a median of up to 5 readings over 60 s) is far too small to explain a 9,000 ft gap. Working guess, not yet confirmed: the phone's altitude sometimes comes from its barometer (cabin pressure, which is far below the aircraft's altitude during a climb and sits around 7,000 ft at cruise) and sometimes from GPS (about 38,000 ft at cruise), and the app cannot tell which. This readout shows the raw numbers so the next flight can confirm or kill that guess. Jon approved logging it.
-
-- Data: in `js/state.js`, add `rawAltitudeLog: []` to the `gps` object. In `onGPSSuccess()` (`js/controls.js`), for every fix (including fixes with no altitude), push `{ t: Date.now(), ft: <raw altitude in feet, or null>, accM: <pos.coords.altitudeAccuracy in meters, or null>, kts: <the fix's raw speed in knots, or null> }` and keep only the newest 30. This is read-only logging; the altitude calculation is not changed.
-- Display: a new group titled "Altitude diagnostics" in the Settings drawer, directly under the existing "Testing" group in `index.html`, holding one monospace block (`id="alt-diag"`, about 10 px, muted color, `white-space: pre`). First line: `Shown: 7,240 ft   fresh readings: 4` (the current `STATE.plane.altitude`, or `--`, and how many buffered readings are under 60 s old). Then the newest 12 raw readings, newest first, one per line: time as `HH:MM:SS`, raw altitude as `38,120 ft` (or `no altitude`), accuracy as `±15 m` (or `±--`), and speed as `452 kt` (or `-- kt`). Speed is included so each line can be matched to takeoff, climb, cruise and descent.
-- Update: a small `updateAltitudeDiag()` in `js/controls.js`, called from the end of `onGPSSuccess()`; it does nothing if the element is missing.
-- Not included: no change to how the shown altitude is computed (that is Queue item 4); the log lives in memory only, so a page reload restarts it *(proposed)*; no copy or export button *(proposed)*; nothing is saved to `localStorage`.
-- Test plan, at 412x915: feed synthetic fixes through `onGPSSuccess()` (altitude, accuracy and speed present; altitude missing; accuracy missing) and check the lines render exactly as described; the log is capped at 30 entries and the display at 12; the shown altitude (`val-altitude`) is identical to the previous version for the same inputs; open the Settings drawer and check the layout by eye (it already scrolls); zero JS errors; rerun the earlier suites; after the push, repeat on the live GitHub Pages site.
-- Ships as: v76.
-
-### 2. Altitude: require 3 consistent readings before the shown value changes
+### 1. Altitude: require 3 consistent readings before the shown value changes
 **Not yet authorized to build.** Items marked *(proposed)* are my defaults and still need Jon's OK. Build after item 3 so the next flight shows what the raw readings really look like.
 
 Jon's rule: the shown altitude should only change after 3 relatively consistent readings, within a few hundred feet at most. Today there is no such rule: `onGPSSuccess()` takes the median of however many readings under 60 s old are in a 5-reading buffer, so with one or two fresh readings a single spike goes straight to the screen, and three bad readings out of five win.
@@ -276,7 +279,7 @@ Jon's rule: the shown altitude should only change after 3 relatively consistent 
 - Test plan: feed synthetic fixes through `onGPSSuccess()` with a faked clock: steady 35,000 ft within 50 ft is shown after 3 readings; a single 7,000 ft spike among 35,000 ft readings never reaches the screen; two spikes in a row never reach the screen; alternating 7,000 and 38,000 holds the last good value and then shows `--` after 60 s; a steady 3,000 ft/min climb (150 ft per poll) follows the readings; a genuine step to a new level shows after 3 readings at that level; missing altitudes are skipped; the first display needs 3 readings; no JS errors; rerun the earlier suites; repeat on the live site.
 - Ships as: v77.
 
-### 3. Replace the destination runway glyph with a 📍 and remove its orientation code
+### 2. Replace the destination runway glyph with a 📍 and remove its orientation code
 **Not yet authorized to build.** Items marked *(proposed)* are my defaults and still need Jon's OK.
 
 Jon: the destination's black "≡---" runway glyph is no longer needed, a simple 📍 is fine, and the code that orients the glyph should go too. Jon chose to put the pin's tip exactly on the airport. Jon clarified that the destination's 3-letter code text is the tap target he wants for opening the runway layout screen, and that this already works; what makes it hard to hit is another word sitting on top of it (the doubled label from Queue item 1). So the tap target does not change.
@@ -288,7 +291,7 @@ Jon: the destination's black "≡---" runway glyph is no longer needed, a simple
 - Test plan, at 412x915: the pin is drawn at the destination and its tip is within 2 px of the airport's projected position at several zoom levels; no black runway box is drawn near the destination; the pin keeps a constant size when zooming and stays upright in Track-Up; picking another destination moves it; the label does not overlap the pin badly (by eye, with a screenshot); tapping the 3-letter code text still opens the airport popup, as today, at several zoom levels and in Track-Up; a search of `js/` finds no remaining use of `runwayLocked`, `runwayLockedBearing`, `runwayGlyphFontPx` or the glyph's bearing code; rerun the earlier suites; repeat on the live site.
 - Ships as: v78.
 
-### 4. Auto-open the airport approach screen at 2 NM instead of 1 NM
+### 3. Auto-open the airport approach screen at 2 NM instead of 1 NM
 **Not yet authorized to build.**
 
 Jon expected the approach and landing screen to open at 2 NM, but it opened as the plane passed over the end of the runway. The code (and the v62 note in Build Log 1) says 1 NM, measured from the destination's listed position (the airport reference point), which on a long runway is about where the runway end is. The 2 NM Jon remembers was the old runway glyph's orientation lock, which Queue item 5 removes.
