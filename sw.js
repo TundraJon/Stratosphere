@@ -34,14 +34,32 @@ async function getSkipUntil(cache) {
     return isNaN(t) ? 0 : t;
 }
 
-// Cached copy of a request. A page navigation with no copy of that exact URL
-// (e.g. one with a query string) falls back to the cached index.html.
+// Cached copy of a request. A numbered file (?v=) that is not saved yet falls
+// back to an older saved copy of the same path, so a page that was refreshed
+// before its files were still works offline. A page navigation with no copy
+// of that exact URL (e.g. one with a query string) falls back to the cached
+// index.html.
 async function matchCached(cache, req) {
     const isNav = req.mode === 'navigate';
-    const hit = await cache.match(req, { ignoreVary: true, ignoreSearch: isNav });
-    if (hit || !isNav) return hit;
+    const exact = await cache.match(req, { ignoreVary: true });
+    if (exact) return exact;
+    const older = await cache.match(req, { ignoreVary: true, ignoreSearch: true });
+    if (older || !isNav) return older;
     return (await cache.match(new URL('index.html', self.registration.scope).href, { ignoreVary: true }))
         || (await cache.match(self.registration.scope, { ignoreVary: true }));
+}
+
+// A file saved under a new ?v= number replaces the older saved copies of the
+// same path (any other query, including none), so each build does not leave a
+// full set of old files behind.
+async function pruneOlderVersions(cache, urlString) {
+    const url = new URL(urlString);
+    if (!url.searchParams.has('v')) return;
+    const keys = await cache.keys();
+    await Promise.all(keys.filter((k) => {
+        const u = new URL(k.url);
+        return u.origin === url.origin && u.pathname === url.pathname && u.search !== url.search;
+    }).map((k) => cache.delete(k)));
 }
 
 // `background` collects work that should outlive the response (the network
@@ -57,7 +75,7 @@ async function handle(req, background) {
     // own HTTP cache, so one reload after an update is enough.
     const net = fetch(req, { cache: 'no-cache' });
     background.push(
-        net.then((res) => (res.ok ? cache.put(req, res.clone()) : null)).catch(() => {})
+        net.then((res) => (res.ok ? cache.put(req, res.clone()).then(() => pruneOlderVersions(cache, req.url)) : null)).catch(() => {})
     );
 
     let timer;
@@ -102,7 +120,7 @@ self.addEventListener('message', (event) => {
                 const url = new URL(u, self.location.href);
                 if (url.origin !== self.location.origin) return;
                 const res = await fetch(url.href);
-                if (res.ok) await cache.put(url.href, res);
+                if (res.ok) { await cache.put(url.href, res); await pruneOlderVersions(cache, url.href); }
             } catch (e) { /* skip this file */ }
         }));
     })());

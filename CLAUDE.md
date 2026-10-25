@@ -28,3 +28,4 @@ Read `README.md` first. It holds the standing rule, the Build Log, the Build Que
 - `index.html` loads `css/styles.css` and the files in `js/` as classic `<script>` tags (not ES modules).
 - The scripts share globals, so the load order in `index.html` matters. Don't reorder them.
 - `js/data/` holds large map and airport data. Avoid opening these whole.
+- Version buster: every file reference in `index.html` (the stylesheet, all scripts, the manifest, the favicon and the Apple icon) ends with `?v=<build version number>`, for example `?v=80`. Every build must change that number, on all of them at once, to the new build's version number, so a browser refresh gets the new files.

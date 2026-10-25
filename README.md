@@ -314,23 +314,28 @@ Built as spec'd in the Build Queue. Jon expected the approach and landing screen
 - Live GitHub Pages site (checked after the deploy of v79, headless Chromium at 412x915, no real GPS, synthetic fixes), covering the whole group v74 to v79: after picking a destination with the Airports layer on, the cached map layer matches a full rebuild (v74); with nothing saved and a history-style restore, the dropdown and the Flight Info agree (v75); the Settings altitude readout shows the raw readings (v76); a 7,000 ft spike never reaches the screen and the value appears only after 3 consistent readings (v77); the 📍 tip is 0.3 px and 0.5 px from the airport and no black glyph is drawn (v78); the approach screen does not open at 2.1 NM, opens at 1.9 NM, and does not pop back open after being closed at 1.9 NM (v79); zero JS errors; and an offline reload still loads the app from the cache.
 - Not tested: a real approach on a real phone.
 
+### Build Log 21 (completed): v80, version buster (a `?v=` number on every file reference)
+Built as spec'd in the Build Queue. Jon's request (sent while v79 was being built): use a "version buster" so a browser refresh gets the new version. No version buster existed before this build.
+- [x] `index.html`: `?v=80` added to all 24 file references: the stylesheet, all 20 scripts, the manifest, the favicon and the Apple icon link. GitHub Pages ignores the query string for static files, so the files still load. Nothing else in the file changed.
+- [x] `sw.js`: when the worker saves a file whose URL has `?v=`, it also deletes any other saved entry with the same path and a different query (including a plain, pre-buster copy), so each build does not leave a full set of old files behind (new `pruneOlderVersions()`, also used by the first-visit save). The worker file itself is not versioned in its URL.
+- [x] `CLAUDE.md`: one line added under "Code structure" saying every build must change the `?v=` number on every file reference in `index.html` to the new build's version number, so no later session forgets.
+- [x] **One addition beyond the spec:** in `matchCached()` a numbered file that is not saved yet now falls back to an older saved copy of the same path (the same lookup with the query ignored). Without it, a page that was refreshed in the background to ask for `?v=81` files, while only `?v=80` files were saved, would fail to load offline. This only matters in the slow-connection case described in Build Log 8's note, and it keeps that case working (an updated page with older scripts, as before) instead of breaking it.
+- [x] Left out, as spec'd: no build tool and no content hashing (the number is changed by hand each build); fonts (referenced from the CSS) and the icons listed in the manifest keep their plain paths; the page itself (`index.html`) cannot carry its own number.
+- [x] The check that every reference carries the same number, and that it matches the build's version, is part of my test tooling and is not a file in the repo; the rule that keeps it true is the `CLAUDE.md` line.
+
+**Verification:** headless Chromium at 412x915 against a local server that sends `cache-control: max-age=600` like GitHub Pages. (Playwright turns the browser's HTTP cache off whenever a page uses request blocking, so the cache tests run without it.)
+- All 24 references carry `?v=80` and no other number; the page loads from the numbered URLs with no 404s and no JS errors.
+- With service workers blocked and the HTTP cache on, after a script changes on the server: with the SAME number, both coming back to the site (a new visit) and a plain refresh show the OLD script (the browser reuses it for the 10 minutes); with the number bumped to `?v=81` in the page, both a new visit and a refresh get the new script. This is the problem the buster solves.
+- With the worker active: files are saved under their `?v=80` URLs; after a bump to `?v=81` and then `?v=82`, each file has only its newest saved copy, a planted pre-buster plain copy is gone, and the number of saved entries stays at 26.
+- Safeguard: after a slow server answered late with a page asking for `?v=81` files that were not saved, and the server was then taken down, a reload still loaded the app from the older saved files, with no errors.
+- The v64 to v79 test suites, and the altitude, pin and approach-screen tests, were rerun: all pass. Four of my own tests were adjusted: the offline cache suite no longer counts the browser's own default `/favicon.ico` request (it does not go through the worker) and recognises `favicon.ico?v=80`; the installability suite accepts the `?v=` suffix on the head tags; and two old-version comparisons that only made sense against a version still having a fixed bug no longer apply.
+- Not tested: a real phone, and other browsers' refresh behavior (for example Safari).
+
 ## Build Queue
 
 Fully specified work that is waiting for a go-ahead. Items leave this list in the same commit that builds them.
 
-### 1. Version buster (a `?v=` number on every file reference, bumped every build)
-**Not yet authorized to build.** Items marked *(proposed)* are my defaults and still need Jon's OK.
-
-Jon's request (sent while v79 was being built): use a "version buster" so a browser refresh gets the new version. No version buster exists today (nothing in the README, `CLAUDE.md`, `index.html` or `sw.js` mentions one).
-
-- Today: freshness depends on GitHub Pages sending `cache-control: max-age=600` (a browser may reuse a file for 10 minutes) and on the offline cache worker revalidating on each load. Without the worker (a first visit, a browser that blocks workers, or the moment before it takes over) a refresh can show files up to 10 minutes old, and old and new files can mix.
-- What: in `index.html`, add `?v=<the build's version number>` to every file reference: the stylesheet (`css/styles.css?v=80`), all 20 scripts, the manifest, the favicon and the Apple icon link. This build ships as v80, so they all read `?v=80`. GitHub Pages ignores the query string for static files, so the files still load.
-- Every build after this one changes that number, on all of those references at once, to the build's own version number (v81 gets `?v=81`, and so on). A new check confirms every reference carries the same number and that it matches the build's version.
-- Remembering it: add one line to `CLAUDE.md` under "Code structure" saying every build must update the `?v=` number on every file reference in `index.html` to the new version number, so no later session forgets.
-- Offline cache worker (`sw.js`): the query string is part of a saved file's cache key, so each new number would add a new entry and leave the old ones behind (about 0.8 MB per build). Fix: when the worker saves a file whose URL has `?v=`, it also deletes any other saved entry with the same path and a different `v`. The worker file itself is not versioned in its URL (browsers already re-check `sw.js` on every load), and `js/register-sw.js` is unchanged apart from carrying its own `?v=` in `index.html`.
-- Not included: no build tool and no content hashing (the number is changed by hand each build, with the check above); fonts (referenced from the CSS) and the icons listed inside the manifest keep their plain paths *(proposed)*, because they almost never change; the page itself (`index.html`) cannot carry its own number, a normal refresh revalidates it.
-- Test plan, at 412x915: all 24 references carry `?v=80`, and the page loads with no 404s and no JS errors; with service workers blocked and a local server sending `max-age=600` like Pages, change a script and bump its `?v`: one plain reload shows the new script, and the same test without the number change shows the old one (to prove the buster is what does it); the offline cache tests (first-visit fill, offline reload, update on one reload, hanging server, 1-hour window, workers blocked) still pass with the numbered URLs; after two version bumps the worker holds only the newest saved entry for each file; the installability check still passes; the v64 to v79 suites still pass; after the push, repeat the check on the live GitHub Pages site, including a plain refresh picking up a second build.
-- Ships as: v80.
+_Empty — nothing queued right now._
 
 ## Build Planner
 
