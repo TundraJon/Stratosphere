@@ -6,11 +6,6 @@
         STATE.target = ap;
         saveDestination(ap.name);
 
-        // New destination - the runway marker should track live again until
-        // it gets within 2NM of this new airport.
-        STATE.runwayLocked = false;
-        STATE.runwayLockedBearing = null;
-
         // Heading is NOT snapped here — the sim loop's fixed 10deg/sec turn
         // logic will gradually bring the plane onto the new course on its own.
         STATE.plane.speed = 460;

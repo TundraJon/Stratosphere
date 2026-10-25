@@ -280,23 +280,27 @@ Built as spec'd in the Build Queue, built after the diagnostic readout (Build Lo
 - Zero JS errors in both versions. The v64 to v76 test suites were rerun: all pass. (Two of my own tests were tightened along the way: the destination suite's speed check now reads the speed in the same instant as the pick, because a mocked GPS fix could occasionally reset it first, and the diagnostics suite no longer asserts the old calculation.)
 - Not tested: a real phone, and real in-flight altitude readings.
 
+### Build Log 19 (completed): v78, replace the destination runway glyph with a 📍 and remove its orientation code
+Built as spec'd in the Build Queue. Jon: the destination's black "≡---" runway glyph is no longer needed, a simple 📍 is fine, and the code that orients the glyph should go too. Jon chose to put the pin's tip exactly on the airport, and (after I proposed a wider tap area) confirmed that the tap target stays the 3-letter code text only.
+- [x] `js/live-layer.js`: the whole "Draw Target Destination Runway Marker" block (the glyph and its bearing and 2 NM lock logic, about 60 lines) is replaced with a 📍 drawn through `drawFixedLabel(targetPos, ...)`, the same way the home 🏠 is: centered, `sans-serif`, `scaledFontPx(16)` (the same size as the home pin). The glyph's own measured ink bottom is aligned to the airport's position (`fillText("📍", 0, -measureText("📍").actualBoundingBoxDescent)`), so the pin's tip lands on the airport whatever emoji font the device uses (spec'd as `textBaseline` `"bottom"` tuned in testing; measuring the glyph is more robust).
+- [x] Removed because nothing else used them: `STATE.runwayLocked` and `STATE.runwayLockedBearing` and their comment in `js/touch.js`; the reset of both, and its comment, in `handleAirportSelect()` in `js/controls.js`; `runwayGlyphFontPx()` and its comment in `js/projection.js`. A search of `js/` and `index.html` finds no remaining use of `runwayLocked`, `runwayLockedBearing`, `runwayGlyphFontPx`, `runwayBearing` or `runwayFontPx`.
+- [x] Comment-only updates so they stop describing the glyph: the live layer header comment in `js/live-layer.js`, the `isTapOnDestinationMarker` comment in `js/touch.js`, and the "runway marker" mention in `js/terminator.js`.
+- [x] Left out, as spec'd: the destination label (code, official name, city) keeps its position and text; the tap target stays the 3-letter code text and `isTapOnDestinationMarker()` is untouched; the cutscene's own `≡` runway markers and the popup's runway drawing are separate and untouched; the magenta route line stays.
+
+**Verification:** headless Chromium at 412x915 with a 2x pixel ratio. The pin is measured by drawing the screen with and without it and diffing the two images, so the measurement does not depend on its colors.
+- At zoom 1.1, 3, 9, 20 and 40 the pin is drawn and its tip is within 0.5 px of the airport's projected position (dx -0.3, dy -0.5). The pin is about 9 by 18 px for the 16 px font.
+- The black runway glyph is gone: pure-black pixels within 50 px of the airport went from 681 to 0.
+- Track-Up with the map rotated 45 degrees (plane placed about 100 NM away so the plane icon does not cover the pin): the pin stays upright and its tip is on the airport (dx -0.1, dy -0.6).
+- Picking Denver moves the pin there (tip within 0.5 px). Tapping the 3-letter code text still opens the airport popup. The pin sits cleanly beside the label in screenshots at zoom 9 and at the normal view with the Airports layer on.
+- Zero JS errors. The v64 to v77 test suites were rerun: all pass (the destination suite's assertion about `STATE.runwayLocked` was removed from the test because that state no longer exists; the offline cache suite failed one check once under heavy machine load and passed 4 of 4 reruns).
+- Not tested: a real phone, and how the pin looks in Apple's emoji font (the glyph is measured at run time, so the tip placement should hold).
+- Observed, unchanged: tapping the pin at its horizontal centre, just above the tip, also opens the popup, because the code text's tap area starts 2 px left of the airport and reaches up 31 px. That area was not changed.
+
 ## Build Queue
 
 Fully specified work that is waiting for a go-ahead. Items leave this list in the same commit that builds them.
 
-### 1. Replace the destination runway glyph with a 📍 and remove its orientation code
-**Not yet authorized to build.** Items marked *(proposed)* are my defaults and still need Jon's OK.
-
-Jon: the destination's black "≡---" runway glyph is no longer needed, a simple 📍 is fine, and the code that orients the glyph should go too. Jon chose to put the pin's tip exactly on the airport. Jon clarified that the destination's 3-letter code text is the tap target he wants for opening the runway layout screen, and that this already works; what makes it hard to hit is another word sitting on top of it (the doubled label from Queue item 1). So the tap target does not change.
-
-- `js/live-layer.js`: replace the whole "Draw Target Destination Runway Marker" block (from its comment through its closing brace, just before `drawFixedLabel(targetPos, ...)`) with a 📍 drawn the same way the home 🏠 is: `drawFixedLabel(targetPos, () => { ... ctx.fillText("📍", 0, 0); })` with `textAlign` `"center"`, `textBaseline` `"bottom"` (tuned in testing so the pin's tip lands within 2 px of the airport's position) and a font of `scaledFontPx(16)` *(proposed: the same size as the home pin)* in `sans-serif`. This removes the bearing and 2 NM lock logic that lives inside that block.
-- Remove, because nothing else uses them: `STATE.runwayLocked` and `STATE.runwayLockedBearing` and their comment in `js/touch.js` (about lines 28 to 32); the reset of both, and its comment, in `handleAirportSelect()` in `js/controls.js` (about lines 9 to 12); `runwayGlyphFontPx()` and its comment in `js/projection.js` (about lines 25 to 38).
-- Comment-only updates so they stop describing the glyph: the live layer header comment in `js/live-layer.js` (lines 7 and 8), the `≡---` mention in the `isTapOnDestinationMarker` comment in `js/touch.js`, and the "runway marker" mention in `js/terminator.js` (about line 512).
-- Not included: the destination label (code, official name, city) keeps its position and text; the tap target stays the 3-letter code text exactly as today and `isTapOnDestinationMarker()` is untouched (the pin itself is not tappable, by Jon's choice); the cutscene's own `≡` runway markers and the popup's runway drawing are separate and untouched; the magenta route line stays.
-- Test plan, at 412x915: the pin is drawn at the destination and its tip is within 2 px of the airport's projected position at several zoom levels; no black runway box is drawn near the destination; the pin keeps a constant size when zooming and stays upright in Track-Up; picking another destination moves it; the label does not overlap the pin badly (by eye, with a screenshot); tapping the 3-letter code text still opens the airport popup, as today, at several zoom levels and in Track-Up; a search of `js/` finds no remaining use of `runwayLocked`, `runwayLockedBearing`, `runwayGlyphFontPx` or the glyph's bearing code; rerun the earlier suites; repeat on the live site.
-- Ships as: v78.
-
-### 2. Auto-open the airport approach screen at 2 NM instead of 1 NM
+### 1. Auto-open the airport approach screen at 2 NM instead of 1 NM
 **Not yet authorized to build.**
 
 Jon expected the approach and landing screen to open at 2 NM, but it opened as the plane passed over the end of the runway. The code (and the v62 note in Build Log 1) says 1 NM, measured from the destination's listed position (the airport reference point), which on a long runway is about where the runway end is. The 2 NM Jon remembers was the old runway glyph's orientation lock, which Queue item 5 removes.

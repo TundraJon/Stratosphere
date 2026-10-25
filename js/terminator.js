@@ -509,7 +509,7 @@
 
             AIRPORTS.forEach(ap => {
                 // Skip the currently-selected destination — it's already drawn
-                // above as the runway marker, so this avoids drawing it twice.
+                // above as the pin and label, so this avoids drawing it twice.
                 if (ap.name === STATE.target.name) return;
 
                 const p = project(ap.lat, ap.lon);

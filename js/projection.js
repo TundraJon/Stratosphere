@@ -22,20 +22,6 @@
         return Math.round(basePx * zoomFontScale());
     }
 
-    // Dedicated font-size curve for the destination Runway Glyph ONLY. Do not
-    // reuse this for landmarks/airports/other labels -- they should keep using
-    // scaledFontPx() above. At zoom>=50 this behaves identically to the shared
-    // curve (unchanged). Below zoom 50, instead of staying flat at the full
-    // 20px size (which looks oversized zoomed all the way out to see the whole
-    // US), it shrinks linearly down to a ~10-11px floor as zoom approaches 0.
-    function runwayGlyphFontPx() {
-        const BASE_PX = 20;   // matches the size at zoom=50 (unchanged from before)
-        const FLOOR_PX = 10.5; // floor at zoom=0, per user confirmation (10-11px)
-        const z = STATE.view.zoom;
-        if (z >= 50) return scaledFontPx(BASE_PX);
-        return FLOOR_PX + (BASE_PX - FLOOR_PX) * (z / 50);
-    }
-
     function project(lat, lon) {
         const d2r = Math.PI / 180;
         const r0 = 6371; // Earth Radius in km (Relative scaling)

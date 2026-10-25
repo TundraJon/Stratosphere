@@ -25,12 +25,6 @@
     let planeTapTimeout = null;
     const DOUBLE_TAP_WINDOW = 300; // ms
 
-    // Runway glyph (target airport indicator): tracks the plane's bearing
-    // live until distance < 2NM, then freezes at whatever bearing it had at
-    // that moment. Resets when a new destination airport is selected.
-    STATE.runwayLocked = false;
-    STATE.runwayLockedBearing = null;
-
     // Same screen-position formula the plane draw block uses, so tap
     // hit-testing lines up exactly with where the icon is actually drawn.
     function getPlaneScreenPos() {
@@ -96,8 +90,8 @@
     }
 
     // Tap detection for the special destination marker's code text (the
-    // "≡---" runway glyph + code label that replaces the normal airport
-    // marker at the selected destination). Unlike regular airports, this
+    // pin + code label that replaces the normal airport marker at the
+    // selected destination). Unlike regular airports, this
     // has NO zoom gate -- it's the only one on screen at any time, so
     // there's no tap-ambiguity risk the zoom gate exists to prevent for
     // closely-clustered regular airport dots. Font is bigger (bold 11px

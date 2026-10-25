@@ -4,8 +4,7 @@
     // covers everything that changes on its own even when the user isn't
     // touching the screen at all: the plane's continuous dead-reckoning
     // motion between GPS fixes, the route line following it, and the
-    // destination runway glyph (its rotation/position depend on the live
-    // bearing to the plane, not just the destination's fixed location).
+    // destination pin and label.
     // Sets up its OWN independent transform (mirroring the top of
     // drawBaseAndOverlays exactly) rather than relying on any state left
     // over from that function, since this runs every frame regardless of
@@ -40,68 +39,15 @@
             ctx.stroke();
         }
 
-        // Draw Target Destination Runway Marker — a black-background, white-text
-        // "≡---" glyph instead of a plain dot. The ≡ end rotates to keep facing
-        // the plane's current bearing while distance >= 2NM; the instant distance
-        // first drops below 2NM, the bearing is captured once and frozen, giving
-        // the plane a stable, non-wobbling line to land on. Resets (unlocks) when
-        // a new destination is picked, in handleAirportSelect().
-        {
-            const distToTarget = getDistance(STATE.plane.lat, STATE.plane.lon, STATE.target.lat, STATE.target.lon);
-            let runwayBearing;
-            if (distToTarget < 2) {
-                if (!STATE.runwayLocked) {
-                    STATE.runwayLocked = true;
-                    STATE.runwayLockedBearing = getBearing(STATE.target.lat, STATE.target.lon, STATE.plane.lat, STATE.plane.lon);
-                }
-                runwayBearing = STATE.runwayLockedBearing;
-            } else {
-                runwayBearing = getBearing(STATE.target.lat, STATE.target.lon, STATE.plane.lat, STATE.plane.lon);
-            }
-
-            ctx.save();
-            ctx.translate(targetPos.x, targetPos.y);
-            const invZoom = 1 / STATE.view.zoom;
-            ctx.scale(invZoom, invZoom);
-            ctx.rotate((runwayBearing + 90) * Math.PI / 180);
-
-            const runwayFontPx = runwayGlyphFontPx();
-            ctx.font = `bold ${runwayFontPx}px monospace`;
-            ctx.textAlign = "left";
+        // Draw Target Destination marker: a 📍 whose tip sits exactly on the
+        // airport. The glyph's own measured ink bottom is aligned to the
+        // airport's position, so this holds whatever emoji font the device uses.
+        drawFixedLabel(targetPos, () => {
+            ctx.textAlign = "center";
             ctx.textBaseline = "alphabetic";
-
-            const eqM = ctx.measureText("≡");
-            const eqCenterY = (eqM.actualBoundingBoxAscent - eqM.actualBoundingBoxDescent) / 2;
-            const gap = runwayFontPx * 0.08;
-            const dashX = eqM.width + gap;
-
-            const dashM = ctx.measureText("-");
-            const dashCenterY = (dashM.actualBoundingBoxAscent - dashM.actualBoundingBoxDescent) / 2;
-            const dashInkWidth = dashM.actualBoundingBoxLeft + dashM.actualBoundingBoxRight;
-            let dashOriginX = dashX + dashM.actualBoundingBoxLeft;
-            const dashOrigins = [];
-            const dashRightEdges = [];
-            for (let i = 0; i < 3; i++) {
-                dashOrigins.push(dashOriginX);
-                dashRightEdges.push(dashOriginX + dashM.actualBoundingBoxRight);
-                dashOriginX += dashInkWidth + gap;
-            }
-
-            const left = Math.min(-eqM.actualBoundingBoxLeft, dashX);
-            const right = Math.max(eqM.actualBoundingBoxRight, dashRightEdges[dashRightEdges.length - 1]);
-            const top = Math.min(eqCenterY - eqM.actualBoundingBoxAscent, dashCenterY - dashM.actualBoundingBoxAscent);
-            const bottom = Math.max(eqCenterY + eqM.actualBoundingBoxDescent, dashCenterY + dashM.actualBoundingBoxDescent);
-            const pad = runwayFontPx * 0.12;
-
-            ctx.fillStyle = "#000";
-            ctx.fillRect(left - pad, top - pad, (right - left) + pad * 2, (bottom - top) + pad * 2);
-
-            ctx.fillStyle = "#fff";
-            ctx.fillText("≡", 0, eqCenterY);
-            dashOrigins.forEach(x => ctx.fillText("-", x, dashCenterY));
-
-            ctx.restore();
-        }
+            ctx.font = `${scaledFontPx(16)}px sans-serif`;
+            ctx.fillText("📍", 0, -ctx.measureText("📍").actualBoundingBoxDescent);
+        });
 
         drawFixedLabel(targetPos, () => {
             ctx.textAlign = "start";
