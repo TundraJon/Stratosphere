@@ -336,7 +336,46 @@ Built as spec'd in the Build Queue. Jon's request (sent while v79 was being buil
 
 Fully specified work that is waiting for a go-ahead. Items leave this list in the same commit that builds them.
 
-_Empty — nothing queued right now._
+### 1. Plane larger than the runway while it is in the air (airport popup)
+**Not yet authorized to build.** Would ship as v81 (every `?v=` number in
+`index.html` becomes 81).
+
+What Jon wants: in the airport popup, the plane is drawn at 2x its current
+size while it is in the air (50 px becomes 100 px, against a runway that is
+60 px wide in the Follow view), and at its normal 50 px on the ground. The
+size changes smoothly, not in a step.
+
+How "in the air" is decided (speed only, because the phone's altitude is
+unreliable, see Build Log 17). Speed is the same MPH the popup already uses
+(`STATE.plane.speed * 1.15078`):
+- Below 140 MPH: on the ground.
+- Above 160 MPH: in the air.
+- 140 to 160 MPH: the transition band between ground and air (takeoff and
+  landing). My reading, **to be confirmed by Jon**: the plane keeps whatever
+  state it was already in while the speed is inside this band, and flips only
+  when it crosses an end (160 going up, 140 going down). That stops the size
+  flickering when the speed hovers around one number.
+
+How it changes: each time the state flips, the size eases between 50 px and
+100 px over 1.5 seconds (same easing style as the existing Overview/Follow
+snap). If the speed turns back mid-ease, it eases from wherever it is. When
+the popup opens, the size starts at the right value for the current speed
+with no animation.
+
+Where: `js/airport-popup.js` (new constants for 140, 160, 2x and 1.5 s, and
+the plane's font size becomes `AIRPORT_POPUP_PLANE_PX` scaled by the blend)
+and `js/state.js` (a few new `STATE.airportPopup` fields, reset when the
+popup opens).
+
+Same airborne size in both Overview and Follow. Left alone: the four runway
+detection values (60 ft, 150 ft, 7 degrees, 50 MPH), the Overview/Follow
+camera, the tap target, the cutscenes and the altitude readout.
+
+Test plan: drive the plane speed with synthetic values and a fake clock;
+check 50 px below 140, 100 px above 160, hold inside the band per the
+previous state, the 1.5 s ease in both directions and a reversal mid-ease,
+the start value on open, no flicker at the thresholds, both views, then the
+full v64 to v80 suites, the version check for `?v=81`, and the live site.
 
 ## Build Planner
 
@@ -345,21 +384,3 @@ Ideas and known gaps with no committed design yet. Resolved, built, dropped or s
 ### Surfaced in earlier sessions
 1. **Track-Up mode never gets the idle-snapshot caching:** a limitation,
    not a regression
-2. **Plane larger than the runway while it is in the air (airport popup):**
-   In the popup the plane is always drawn at 50 px (`AIRPORT_POPUP_PLANE_PX`)
-   and the Follow view draws the runway 60 px wide, so the plane never looks
-   airborne. Idea (Jon): draw the plane larger than the runway while it is
-   in the air, and at its normal size on the ground, the same convention the
-   takeoff and landing cutscenes use (scale 1.0 on the ground, up to 4.0 in
-   the air). Numbers that already exist and could help decide "in the air":
-   the cutscene trigger speeds (takeoff arms below 50 MPH and fires above
-   70 MPH; landing arms at 400 MPH or more and fires below 140 MPH), the
-   cutscene's liftoff speed (160 MPH), and the popup's own "on this runway"
-   test and 50 MPH Overview/Follow threshold. Open questions: what exactly
-   counts as "in the air" (speed alone is the only signal available, because
-   the phone's altitude is unreliable, see Build Log 17); how much bigger
-   (for example 1.5x to 2x the runway width, or the cutscene's full 4.0x);
-   whether the size changes in a step or smoothly with speed; and how
-   touchdown and liftoff are told apart from taxiing. The four values from
-   the old GPS-noise item (60 ft, 150 ft, 7 degrees, 50 MPH) stay as they
-   are; Jon's two takeoffs and two landings worked nearly perfectly with them.
