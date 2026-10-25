@@ -318,7 +318,19 @@ Built as spec'd in the Build Queue. Jon expected the approach and landing screen
 
 Fully specified work that is waiting for a go-ahead. Items leave this list in the same commit that builds them.
 
-_Empty — nothing queued right now._
+### 1. Version buster (a `?v=` number on every file reference, bumped every build)
+**Not yet authorized to build.** Items marked *(proposed)* are my defaults and still need Jon's OK.
+
+Jon's request (sent while v79 was being built): use a "version buster" so a browser refresh gets the new version. No version buster exists today (nothing in the README, `CLAUDE.md`, `index.html` or `sw.js` mentions one).
+
+- Today: freshness depends on GitHub Pages sending `cache-control: max-age=600` (a browser may reuse a file for 10 minutes) and on the offline cache worker revalidating on each load. Without the worker (a first visit, a browser that blocks workers, or the moment before it takes over) a refresh can show files up to 10 minutes old, and old and new files can mix.
+- What: in `index.html`, add `?v=<the build's version number>` to every file reference: the stylesheet (`css/styles.css?v=80`), all 20 scripts, the manifest, the favicon and the Apple icon link. This build ships as v80, so they all read `?v=80`. GitHub Pages ignores the query string for static files, so the files still load.
+- Every build after this one changes that number, on all of those references at once, to the build's own version number (v81 gets `?v=81`, and so on). A new check confirms every reference carries the same number and that it matches the build's version.
+- Remembering it: add one line to `CLAUDE.md` under "Code structure" saying every build must update the `?v=` number on every file reference in `index.html` to the new version number, so no later session forgets.
+- Offline cache worker (`sw.js`): the query string is part of a saved file's cache key, so each new number would add a new entry and leave the old ones behind (about 0.8 MB per build). Fix: when the worker saves a file whose URL has `?v=`, it also deletes any other saved entry with the same path and a different `v`. The worker file itself is not versioned in its URL (browsers already re-check `sw.js` on every load), and `js/register-sw.js` is unchanged apart from carrying its own `?v=` in `index.html`.
+- Not included: no build tool and no content hashing (the number is changed by hand each build, with the check above); fonts (referenced from the CSS) and the icons listed inside the manifest keep their plain paths *(proposed)*, because they almost never change; the page itself (`index.html`) cannot carry its own number, a normal refresh revalidates it.
+- Test plan, at 412x915: all 24 references carry `?v=80`, and the page loads with no 404s and no JS errors; with service workers blocked and a local server sending `max-age=600` like Pages, change a script and bump its `?v`: one plain reload shows the new script, and the same test without the number change shows the old one (to prove the buster is what does it); the offline cache tests (first-visit fill, offline reload, update on one reload, hanging server, 1-hour window, workers blocked) still pass with the numbered URLs; after two version bumps the worker holds only the newest saved entry for each file; the installability check still passes; the v64 to v79 suites still pass; after the push, repeat the check on the live GitHub Pages site, including a plain refresh picking up a second build.
+- Ships as: v80.
 
 ## Build Planner
 
