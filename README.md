@@ -171,7 +171,20 @@ Built as spec'd in the Build Queue. Jon chose the icon (his globe image) and sai
 
 Fully specified work that is waiting for a go-ahead. Items leave this list in the same commit that builds them.
 
-_Empty — nothing queued right now._
+### 1. Fix the startup race (code running before later scripts have loaded)
+**Not yet authorized to build.**
+
+Found while testing Build Log 11 (it comes from the file split in Build Log 2). Jon asked for it to be logged. Since the split, a script can run a function or read a variable that lives in a script that has not loaded yet, which logs `lastGpsFix is not defined` or `draw is not defined` and, in the worst case, leaves the loading screen stuck.
+
+- Cause, two entry points (found by listing every listener, timer and animation loop in `js/`):
+  1. `js/canvas.js`, line 36: `window.addEventListener('resize', resizeCanvas);` is active as soon as that script runs (script 9 of 19). A window resize while the later scripts are still loading runs `resizeCanvas`, which calls functions from later scripts. Phones fire resize events during page load (address bar showing or hiding, rotation).
+  2. `js/cutscene.js`, line 586: `requestAnimationFrame(animate);` starts the animation loop in the second-to-last script, before `js/controls.js` (where `lastGpsFix` is declared) has loaded. The first frame can fire in that gap. This one needs no resize at all.
+- Edit 1, `js/canvas.js` line 36: change it to `document.addEventListener("DOMContentLoaded", () => window.addEventListener('resize', resizeCanvas));`. Line 37 (the existing `DOMContentLoaded` call to `resizeCanvas`) is untouched, so the first sizing and fit happen exactly as before.
+- Edit 2, `js/cutscene.js` line 586: change `requestAnimationFrame(animate);` to `document.addEventListener("DOMContentLoaded", () => requestAnimationFrame(animate));`. The loop keeps itself running through the existing `requestAnimationFrame(animate);` at the end of `animate()` (line 584), untouched.
+- Why `DOMContentLoaded`: it fires only after every classic script has run, including `js/controls.js`, so nothing can call a function or read a variable that does not exist yet. Listener order is unchanged where it matters: the existing first `resizeCanvas` call is registered before the animation start, so the first fit still happens before the first animation frame.
+- Not included: no script reordering, no `defer`, no bundling, and no moving of code between files. `defer` does not remove the problem, because the browser can still run other events while it waits for the next deferred script to download. The canvas mouse and touch listeners in `js/airport-popup.js` (lines 502 to 553) are left as they are: the loading screen covers the canvas while the scripts load, so input cannot reach them. `js/loader.js` and `js/early-gps.js` already only touch their own variables.
+- Test plan, at Pixel 7 size (412x915): `git diff` shows exactly two changed lines; first reproduce the problem on the current version with resize events forced during loading (one every 2 ms for about 0.8 s) and with a local server that delays each script by a random 50 to 300 ms to widen the window, then run the same on the fixed version, 20 or more loads each in a normal profile and in a plain context, and expect zero page errors and zero loads where the loading screen sticks (before the fix: errors in 3 of 14 and 2 of 14 forced-resize loads, one stuck load in 8 stress loads, 1 error in 30 plain loads); 60 plain loads with no forcing, zero errors; after loading, a window resize still re-fits the canvas, and the animation loop still runs (the telemetry and plane keep updating); rerun the v64 to v70 test suites; load check with no errors; after the push, repeat the load and offline checks on the live GitHub Pages site.
+- Ships as: v71.
 
 ## Build Planner
 
