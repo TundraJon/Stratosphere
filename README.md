@@ -140,7 +140,17 @@ Built as spec'd in the Build Queue. Comment-only change: no code or behavior tou
 
 Fully specified work that is waiting for a go-ahead. Items leave this list in the same commit that builds them.
 
-_Empty — nothing queued right now._
+### 1. Remove Wyoming's dead-time season
+**Not yet authorized to build.**
+
+Promoted from the Build Planner (Wyoming's dates). Jon's reason: Wyoming typically goes straight from fall colors to snow cover overnight. Jon chose option 1: the switch happens on Oct 11, when snow starts, and snow's start date does not move.
+
+- Where: `js/seasonal.js`, the `"Wyoming"` entry in the state season data.
+- What: change `dead: [[10,21],[12,1]]` to `dead: null` on that one line, the same way other states with no dead-time are written. The result is `seasons: { fall: [[9,21],[10,20]], dead: null, snow: [[10,11],[4,20]], spring: [[4,21],[6,30]] }`.
+- Behavior after: Sep 21 to Oct 10 fall; Oct 11 to Apr 20 snow (no brown stretch in between); Apr 21 to Jun 30 spring; Jul 1 to Sep 20 no season (the plain default land color, as before). The picker gives the window that started most recently priority, so fall's nominal end of Oct 20 stays overridden by snow from Oct 11, exactly as it is today.
+- Not included: fall, snow and spring dates are unchanged; no other state is touched; no code changes.
+- Test plan: `git diff` shows exactly one changed line, in `js/seasonal.js`; in the page, check `getActiveSeasonColors('Wyoming', date)` for Sep 20, Sep 21, Oct 10, Oct 11, Oct 20, Oct 21, Nov 15, Dec 2, Apr 20, Apr 21, Jun 30 and Jul 1, and confirm no date in the whole year returns the dead-time season for Wyoming; compare every day of the year for all other states against the previous version and confirm nothing else changed; load check at Pixel 7 size (412x915) with zero errors.
+- Ships as: v69.
 
 ## Build Planner
 
@@ -152,13 +162,11 @@ Ideas and known gaps with no committed design yet. Resolved, built, dropped or s
    Waiting on real-world results from the GPS-loss flight test. The 60 ft
    lateral margin, 150 ft along-track margin and 7° alignment are the
    values to watch.
-2. **Wyoming's snow start (Oct 11) comes before its dead-time (Oct 21):**
-   a known choice, parked
-3. **Track-Up mode never gets the idle-snapshot caching:** a limitation,
+2. **Track-Up mode never gets the idle-snapshot caching:** a limitation,
    not a regression
 
 ### Surfaced later
-4. **Installable app ("Add to Home Screen"):** split out of the offline-cache
+3. **Installable app ("Add to Home Screen"):** split out of the offline-cache
    idea. Needs a web app manifest (name, theme color, standalone display) and
    app icons, and builds on the offline cache (Build Log 8). Not needed for
    offline use, so parked for now. Open questions: icon design, whether it
