@@ -333,22 +333,25 @@
             STATE.gps.targetHeading = (Math.atan2(sumY, sumX) * 180 / Math.PI + 360) % 360;
         }
 
-        // Median (not mean, unlike speed) -- altitude is the noisiest of the
-        // GPS fields, and median resists a single spike better than a mean
-        // would. Filtered by AGE first (60s), not just count -- altitude
-        // fixes can be sparse (needs a full 4-satellite 3D lock), so "the
-        // last 5 successful readings" could otherwise span several minutes,
-        // letting stale ground-level values drag the median down long after
-        // a real climb has started. If nothing survives the age filter,
-        // this whole block is skipped, leaving STATE.plane.altitude at its
-        // last computed value (freeze-on-gap, same as before).
+        // An altitude change is accepted only when the 3 newest readings (each
+        // under 60s old) are consistent: each step between neighbors is at most
+        // ALTITUDE_CONSISTENCY_FT. The shown value is then the median of those
+        // 3. Anything else leaves the shown value alone (hold), so a single
+        // spike, or a source that flips between two very different values,
+        // never reaches the screen. A steady climb passes (a 3,000ft/min climb
+        // is 150ft per 3s poll); a limit on the total spread of the 3 would
+        // freeze the display in normal climbs. shownAltitudeFt() goes back to
+        // "--" if nothing has been accepted for 60s.
         const ALTITUDE_MAX_AGE_MS = 60000;
+        const ALTITUDE_CONSISTENCY_FT = 300;
         const freshAltitudes = STATE.gps.recentAltitudes.filter(r => Date.now() - r.time <= ALTITUDE_MAX_AGE_MS);
-        if (freshAltitudes.length > 0) {
-            const sorted = freshAltitudes.map(r => r.value).sort((a, b) => a - b);
-            const mid = Math.floor(sorted.length / 2);
-            const median = sorted.length % 2 !== 0 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2;
-            STATE.plane.altitude = Math.round(median);
+        if (freshAltitudes.length >= 3) {
+            const last3 = freshAltitudes.slice(-3).map(r => Math.round(r.value)); // whole feet, so the feet-meters-feet conversion can't push a step just over the limit
+            if (Math.abs(last3[1] - last3[0]) <= ALTITUDE_CONSISTENCY_FT && Math.abs(last3[2] - last3[1]) <= ALTITUDE_CONSISTENCY_FT) {
+                const sorted = last3.slice().sort((x, y) => x - y);
+                STATE.plane.altitude = Math.round(sorted[1]);
+                STATE.gps.lastAltitudeAcceptedTime = Date.now();
+            }
         }
 
         if (STATE.gps.recentSpeeds.length > 0) {
@@ -427,6 +430,15 @@
         if (el) el.textContent = altitudeStatusEmoji();
     }
 
+    // The altitude to show: the last accepted value, but only for 60s after it
+    // was accepted. After that it goes back to "--" instead of freezing on a
+    // stale number.
+    const ALTITUDE_HOLD_MS = 60000;
+    function shownAltitudeFt() {
+        if (STATE.plane.altitude === null || STATE.gps.lastAltitudeAcceptedTime === null) return null;
+        return (Date.now() - STATE.gps.lastAltitudeAcceptedTime <= ALTITUDE_HOLD_MS) ? STATE.plane.altitude : null;
+    }
+
     // Settings > Altitude diagnostics: what the app is showing, plus the
     // newest 12 raw readings exactly as the phone reported them, so a flight
     // can show whether the altitude comes from more than one source. Read-only.
@@ -434,7 +446,8 @@
         const el = document.getElementById('alt-diag');
         if (!el) return;
         const fresh = STATE.gps.recentAltitudes.filter(r => Date.now() - r.time <= 60000).length; // same 60s window as the median
-        const shown = STATE.plane.altitude !== null ? STATE.plane.altitude.toLocaleString() + ' ft' : '--';
+        const shownAlt = shownAltitudeFt();
+        const shown = shownAlt !== null ? shownAlt.toLocaleString() + ' ft' : '--';
         const pad2 = n => String(n).padStart(2, '0');
         const lines = ['Shown: ' + shown + '   fresh readings: ' + fresh];
         STATE.gps.rawAltitudeLog.slice(-12).reverse().forEach(r => {

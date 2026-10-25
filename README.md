@@ -251,7 +251,7 @@ Built as spec'd in the Build Queue. Jon's altitude reports: the readout swings b
 - [x] `js/controls.js`, `onGPSSuccess()`: for every fix (including fixes with no altitude) it pushes `{ t, ft, accM, kts }` (time, raw altitude in feet or null, `altitudeAccuracy` in meters or null, and the device-reported speed in knots or null, taken before any computed fallback) and keeps the newest 30. This is logging only; nothing in the altitude calculation reads it.
 - [x] `js/controls.js`: new `updateAltitudeDiag()`, called at the end of `onGPSSuccess()` and once at startup (so the header line is there before the first fix); it does nothing if the element is missing.
 - [x] `index.html`: new "Altitude diagnostics" group in the Settings drawer, directly under the Testing group, with one monospace block `id="alt-diag"` (10 px, muted color, `white-space: pre`). First line: `Shown: 34,990 ft   fresh readings: 5` (the current shown altitude or `--`, and how many buffered readings are under 60 s old). Then the newest 12 raw readings, newest first: time as `HH:MM:SS`, raw altitude (`35,010 ft` or `no altitude`), accuracy (`±8 m` or `±-- m`) and speed (`443 kt` or `-- kt`).
-- [x] Left out, as spec'd: no change to how the shown altitude is computed (Queue item 3 below, the 3-reading rule); the log is in memory only, so a page reload restarts it; no copy or export button; nothing is saved to `localStorage`.
+- [x] Left out, as spec'd: no change to how the shown altitude is computed (the 3-reading rule, built next as v77 in Build Log 18); the log is in memory only, so a page reload restarts it; no copy or export button; nothing is saved to `localStorage`.
 
 **Verification:** headless Chromium at 412x915 with a 2x pixel ratio and no real GPS (permission denied), feeding 33 synthetic fixes through `onGPSSuccess()` with a controlled clock (cruise readings, a fix with no altitude, an odd 7,050 ft reading with no speed, and readings with and without accuracy).
 - The shown altitude is identical to the previous version (v75) after each of the 33 fixes, so the calculation is unchanged.
@@ -260,26 +260,31 @@ Built as spec'd in the Build Queue. Jon's altitude reports: the readout swings b
 - The v64 to v75 test suites were rerun: all pass.
 - Not tested: a real phone, and real in-flight readings (that is the point of the next flight).
 
+### Build Log 18 (completed): v77, altitude: require 3 consistent readings before the shown value changes
+Built as spec'd in the Build Queue, built after the diagnostic readout (Build Log 17). Jon's rule: the shown altitude should only change after 3 relatively consistent readings, within a few hundred feet at most. Before this build there was no such rule: the app took the median of however many readings under 60 s old were in a 5-reading buffer, so with one or two fresh readings a single spike went straight to the screen, and three bad readings out of five won.
+- [x] `js/controls.js`, `onGPSSuccess()`: the old median block is replaced. The 3 newest buffer readings that are under 60 s old (`ALTITUDE_MAX_AGE_MS`, unchanged) are checked. If there are 3 and each step between neighbors (oldest to middle, middle to newest) is at most `ALTITUDE_CONSISTENCY_FT = 300`, the shown altitude becomes the median of those 3, rounded, and `STATE.gps.lastAltitudeAcceptedTime` is set. Otherwise the shown value is left alone (hold). The 5-reading buffer and the 60 s age limit are unchanged.
+- [x] Why each step and not the total spread: with a 3 s poll a steady 3,000 ft/min climb moves about 150 ft per poll, so three readings span about 300 ft; a limit on the total spread would freeze the display in normal climbs. A 300 ft step passes climbs and descents up to 6,000 ft/min and rejects jumps like 7,000 to 38,000.
+- [x] New `shownAltitudeFt()` (with `ALTITUDE_HOLD_MS = 60000`) in `js/controls.js`: returns the last accepted altitude only for 60 s after it was accepted, otherwise `null`. `updateTelemetryUI()` in `js/telemetry.js` and the Settings diagnostics header both use it, so the screen goes back to `--` if nothing has been accepted for 60 s, instead of freezing on a stale number as before.
+- [x] `js/state.js`: new `lastAltitudeAcceptedTime: null` in the `gps` object.
+- [x] First reading: nothing is shown (`--`) until 3 consistent readings have arrived (about 9 s at the 3 s poll).
+- [x] Implementation detail found in testing: the steps are compared in whole feet. Altitudes arrive in meters and are converted to feet, and a step of exactly 300 ft could come out as 300.0000001 and be rejected at the limit (the 6,000 ft/min climb test caught it).
+- [x] Left out, as spec'd: no choice between a barometer and a GPS source (the "take the higher of the two" idea waits for the readings from the Build Log 17 diagnostics); no change to the altitude status dot, heading or speed smoothing.
+- [x] **Known limit:** the rule cannot tell sources apart. If the phone reports a consistently wrong value (for example a steady cabin-pressure altitude) for 3 readings in a row, it is accepted. This build only stops spikes and flipping; whether the takeoff and descent error (about 800 ft when the captain says 10,000) needs a source rule depends on what the diagnostics show on the next flight.
+
+**Verification:** headless Chromium at 412x915 with no real GPS (permission denied), feeding synthetic fixes through `onGPSSuccess()` with a controlled clock, the previous version (v76) against this one.
+- Steady cruise: nothing shown until the 3rd reading, then the median of the newest 3; the screen shows `--` and then `35,010 ft`.
+- One 7,000 ft spike among 35,000 ft readings never reaches the screen, and the value recovers after 3 good readings (v76 let it move the shown value). Two spikes in a row never reach the screen.
+- Alternating 7,000 and 38,000 for 90 s: the last good value is held and then `--` appears once 60 s pass with nothing accepted. The shown value swung 31,000 ft on v76 and 0 ft on this version.
+- Climbs: 3,000 ft/min (150 ft per fix) and 6,000 ft/min (300 ft per fix) are followed; a 6,400 ft/min climb (320 ft per fix, beyond the limit) is held, as expected.
+- A genuine step to a new level is shown after 3 readings at that level (held until then). Fixes with no altitude are skipped. Readings older than 60 s are not counted: after a 70 s gap the screen shows `--` and 3 new readings are needed. With no new fixes, the screen shows `--` 61 s after the last accepted update.
+- Zero JS errors in both versions. The v64 to v76 test suites were rerun: all pass. (Two of my own tests were tightened along the way: the destination suite's speed check now reads the speed in the same instant as the pick, because a mocked GPS fix could occasionally reset it first, and the diagnostics suite no longer asserts the old calculation.)
+- Not tested: a real phone, and real in-flight altitude readings.
+
 ## Build Queue
 
 Fully specified work that is waiting for a go-ahead. Items leave this list in the same commit that builds them.
 
-### 1. Altitude: require 3 consistent readings before the shown value changes
-**Not yet authorized to build.** Items marked *(proposed)* are my defaults and still need Jon's OK. Build after item 3 so the next flight shows what the raw readings really look like.
-
-Jon's rule: the shown altitude should only change after 3 relatively consistent readings, within a few hundred feet at most. Today there is no such rule: `onGPSSuccess()` takes the median of however many readings under 60 s old are in a 5-reading buffer, so with one or two fresh readings a single spike goes straight to the screen, and three bad readings out of five win.
-
-- Where: `js/controls.js`, `onGPSSuccess()`, the altitude buffer push and the median block (currently about lines 304 to 337).
-- Buffer: keep `STATE.gps.recentAltitudes` (last 5 `{value, time}` entries) and `ALTITUDE_MAX_AGE_MS` (60 s) as they are.
-- Rule: take the 3 newest buffer entries that are under 60 s old. If there are 3, and the step from the oldest to the middle and from the middle to the newest are each at most 300 ft *(proposed: `ALTITUDE_CONSISTENCY_FT = 300`)*, set `STATE.plane.altitude` to the median of those 3, rounded. Otherwise leave `STATE.plane.altitude` as it is (hold).
-- Why each step, not the total spread: with a 3 s poll a steady 3,000 ft/min climb moves about 150 ft per poll, so three readings span about 300 ft; a limit on the total spread would freeze the display in normal climbs. A 300 ft step still passes climbs and descents up to about 6,000 ft/min and rejects jumps like 7,000 to 38,000.
-- First reading: nothing is shown (`--`) until 3 consistent readings have arrived (about 9 s at the 3 s poll).
-- Stale value *(proposed)*: if no update has been accepted for 60 s, show `--` instead of freezing on the last value indefinitely, as it does today.
-- Not included: no choice between a barometer and a GPS source (the "take the higher of the two" idea waits for the item 3 readout); no change to the altitude status dot, heading or speed smoothing.
-- Test plan: feed synthetic fixes through `onGPSSuccess()` with a faked clock: steady 35,000 ft within 50 ft is shown after 3 readings; a single 7,000 ft spike among 35,000 ft readings never reaches the screen; two spikes in a row never reach the screen; alternating 7,000 and 38,000 holds the last good value and then shows `--` after 60 s; a steady 3,000 ft/min climb (150 ft per poll) follows the readings; a genuine step to a new level shows after 3 readings at that level; missing altitudes are skipped; the first display needs 3 readings; no JS errors; rerun the earlier suites; repeat on the live site.
-- Ships as: v77.
-
-### 2. Replace the destination runway glyph with a 📍 and remove its orientation code
+### 1. Replace the destination runway glyph with a 📍 and remove its orientation code
 **Not yet authorized to build.** Items marked *(proposed)* are my defaults and still need Jon's OK.
 
 Jon: the destination's black "≡---" runway glyph is no longer needed, a simple 📍 is fine, and the code that orients the glyph should go too. Jon chose to put the pin's tip exactly on the airport. Jon clarified that the destination's 3-letter code text is the tap target he wants for opening the runway layout screen, and that this already works; what makes it hard to hit is another word sitting on top of it (the doubled label from Queue item 1). So the tap target does not change.
@@ -291,7 +296,7 @@ Jon: the destination's black "≡---" runway glyph is no longer needed, a simple
 - Test plan, at 412x915: the pin is drawn at the destination and its tip is within 2 px of the airport's projected position at several zoom levels; no black runway box is drawn near the destination; the pin keeps a constant size when zooming and stays upright in Track-Up; picking another destination moves it; the label does not overlap the pin badly (by eye, with a screenshot); tapping the 3-letter code text still opens the airport popup, as today, at several zoom levels and in Track-Up; a search of `js/` finds no remaining use of `runwayLocked`, `runwayLockedBearing`, `runwayGlyphFontPx` or the glyph's bearing code; rerun the earlier suites; repeat on the live site.
 - Ships as: v78.
 
-### 3. Auto-open the airport approach screen at 2 NM instead of 1 NM
+### 2. Auto-open the airport approach screen at 2 NM instead of 1 NM
 **Not yet authorized to build.**
 
 Jon expected the approach and landing screen to open at 2 NM, but it opened as the plane passed over the end of the runway. The code (and the v62 note in Build Log 1) says 1 NM, measured from the destination's listed position (the airport reference point), which on a long runway is about where the runway end is. The 2 NM Jon remembers was the old runway glyph's orientation lock, which Queue item 5 removes.

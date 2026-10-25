@@ -53,8 +53,9 @@
         document.getElementById('val-dist').textContent = `${Math.round(dist)} NM`;
         document.getElementById('val-lat').textContent = `${STATE.plane.lat.toFixed(4)}°N`;
         document.getElementById('val-lon').textContent = `${STATE.plane.lon.toFixed(4)}°E`;
-        document.getElementById('val-altitude').textContent = STATE.plane.altitude !== null
-            ? `${STATE.plane.altitude.toLocaleString()} ft` : "--";
+        const shownAlt = shownAltitudeFt();
+        document.getElementById('val-altitude').textContent = shownAlt !== null
+            ? `${shownAlt.toLocaleString()} ft` : "--";
         document.getElementById('val-eta').textContent = etaString;
         document.getElementById('val-ete').textContent = hasValidEte ? `${hours}h ${mins}m` : "--h --m";
     }
