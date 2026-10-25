@@ -167,26 +167,27 @@ Built as spec'd in the Build Queue. Jon chose the icon (his globe image) and sai
 - Live GitHub Pages site (checked after the deploy, headless Chromium at Pixel 7 size, normal profile): the manifest (`application/manifest+json`), the favicon and all four PNGs return 200 with the right types; Chrome's installability check reports no errors and parses the manifest cleanly; the page loads with zero JS errors and nothing requested outside the site; the offline cache worker is still active and filled (27 entries); and with the network switched off, a reload still loads the app from the cache.
 - Not tested: installing on a real phone, how the icon looks on a real home screen, or iPhone at all (no iPhone available).
 
+### Build Log 12 (completed): v71, fix the startup race
+Built as spec'd in the Build Queue (found while testing Build Log 11; it came from the file split in Build Log 2).
+- [x] `js/canvas.js`: `window.addEventListener('resize', resizeCanvas);` is now `document.addEventListener("DOMContentLoaded", () => window.addEventListener('resize', resizeCanvas));`. The existing `DOMContentLoaded` call to `resizeCanvas` on the next line is untouched, so the first sizing and fit happen as before.
+- [x] `js/cutscene.js`: the top-level `requestAnimationFrame(animate);` that starts the animation loop is now `document.addEventListener("DOMContentLoaded", () => requestAnimationFrame(animate));`. The loop keeps itself running through the `requestAnimationFrame(animate);` at the end of `animate()`, untouched.
+- [x] Why `DOMContentLoaded`: it fires only after every classic script (including `js/controls.js`) has run, so nothing can call a function or read a variable that does not exist yet. The first `resizeCanvas` is registered before the animation start, so the first fit still happens before the first animation frame.
+- [x] Left out, as spec'd: no script reordering, no `defer`, no bundling, no code moved between files; the canvas mouse and touch listeners in `js/airport-popup.js` are untouched (the loading screen covers the canvas while the scripts load).
+
+**Verification:** headless Chromium at Pixel 7 size (412x915), the previous version (v70) against the fixed version, loads run in batches of 5 in parallel.
+- `git diff` shows exactly two changed lines.
+- Reproduced first on v70 and confirmed fixed. Slow scripts (each script delayed a random 50 to 300 ms), no forced resize: v70 threw `lastGpsFix is not defined` in 15 of 30 loads (10 of 20 on an earlier run); the fixed version threw in 0 of 30. This confirms the animation-loop start was a cause on its own, with no resize involved.
+- Resize events forced every 2 ms during loading: v70 had errors in 29 of 30 loads and a loading screen that never finished in 28 of 30; the fixed version had 0 errors and 0 stuck. Forced resize plus slow scripts: v70 errors in 30 of 30 and stuck in 30 of 30; the fixed version 0 and 0.
+- Plain loads with nothing forced: v70 had errors in 11 of 60 loads (more often than in earlier sequential runs, because the parallel loads compete for the CPU); the fixed version 0 of 60, and no stuck loading screens in either.
+- After loading, resizing the window still re-fits the canvas (824x1830 at 412x915, then 720x1560 at 360x780); the animation loop runs at 60 frames in a second; a GPS fix arrives and the telemetry keeps working; zero JS errors.
+- The v64, v65, v66, v67 and v70 test suites were rerun against this build: all pass (including Chrome's installability check, which an earlier run had tripped over this bug).
+- Not tested: a real phone.
+
 ## Build Queue
 
 Fully specified work that is waiting for a go-ahead. Items leave this list in the same commit that builds them.
 
-### 1. Fix the startup race (code running before later scripts have loaded)
-**Not yet authorized to build.**
-
-Found while testing Build Log 11 (it comes from the file split in Build Log 2). Jon asked for it to be logged. Since the split, a script can run a function or read a variable that lives in a script that has not loaded yet, which logs `lastGpsFix is not defined` or `draw is not defined` and, in the worst case, leaves the loading screen stuck.
-
-- Cause, two entry points (found by listing every listener, timer and animation loop in `js/`):
-  1. `js/canvas.js`, line 36: `window.addEventListener('resize', resizeCanvas);` is active as soon as that script runs (script 9 of 19). A window resize while the later scripts are still loading runs `resizeCanvas`, which calls functions from later scripts. Phones fire resize events during page load (address bar showing or hiding, rotation).
-  2. `js/cutscene.js`, line 586: `requestAnimationFrame(animate);` starts the animation loop in the second-to-last script, before `js/controls.js` (where `lastGpsFix` is declared) has loaded. The first frame can fire in that gap. This one needs no resize at all.
-- Edit 1, `js/canvas.js` line 36: change it to `document.addEventListener("DOMContentLoaded", () => window.addEventListener('resize', resizeCanvas));`. Line 37 (the existing `DOMContentLoaded` call to `resizeCanvas`) is untouched, so the first sizing and fit happen exactly as before.
-- Edit 2, `js/cutscene.js` line 586: change `requestAnimationFrame(animate);` to `document.addEventListener("DOMContentLoaded", () => requestAnimationFrame(animate));`. The loop keeps itself running through the existing `requestAnimationFrame(animate);` at the end of `animate()` (line 584), untouched.
-- Why `DOMContentLoaded`: it fires only after every classic script has run, including `js/controls.js`, so nothing can call a function or read a variable that does not exist yet. Listener order is unchanged where it matters: the existing first `resizeCanvas` call is registered before the animation start, so the first fit still happens before the first animation frame.
-- Not included: no script reordering, no `defer`, no bundling, and no moving of code between files. `defer` does not remove the problem, because the browser can still run other events while it waits for the next deferred script to download. The canvas mouse and touch listeners in `js/airport-popup.js` (lines 502 to 553) are left as they are: the loading screen covers the canvas while the scripts load, so input cannot reach them. `js/loader.js` and `js/early-gps.js` already only touch their own variables.
-- Test plan, at Pixel 7 size (412x915): `git diff` shows exactly two changed lines; first reproduce the problem on the current version with resize events forced during loading (one every 2 ms for about 0.8 s) and with a local server that delays each script by a random 50 to 300 ms to widen the window, then run the same on the fixed version, 20 or more loads each in a normal profile and in a plain context, and expect zero page errors and zero loads where the loading screen sticks (before the fix: errors in 3 of 14 and 2 of 14 forced-resize loads, one stuck load in 8 stress loads, 1 error in 30 plain loads); 60 plain loads with no forcing, zero errors; after loading, a window resize still re-fits the canvas, and the animation loop still runs (the telemetry and plane keep updating); rerun the v64 to v70 test suites; load check with no errors; after the push, repeat the load and offline checks on the live GitHub Pages site.
-- Ships as: v71.
-
-### 2. Fix the airport popup close button (move it to the corner, bigger tap area)
+### 1. Fix the airport popup close button (move it to the corner, bigger tap area)
 **Not yet authorized to build.**
 
 Reported by Jon from a real phone: the close × sits in the middle of the popup's title row, on top of "(Orlando, FL)", instead of in the top-right corner. Jon asked for a bigger tap area too.
@@ -198,7 +199,7 @@ Reported by Jon from a real phone: the close × sits in the middle of the popup'
 - Test plan, phone-sized (412x915, 2.25 pixel ratio): the button's right edge equals the header's right edge, it is 48 px wide and as tall as the header, and the header's height is unchanged; the × glyph is within 30 px of the right edge; tapping the middle of the title no longer closes the popup; tapping the × and tapping 40 px from the right edge both close it; the glyph never overlaps the title text, checked with the longest airport name in the list; the popup still draws its runways; screenshot checked by eye; rerun the earlier test suites; after the push, repeat the check on the live GitHub Pages site.
 - Ships as: v72.
 
-### 3. Remember the destination airport between launches
+### 2. Remember the destination airport between launches
 **Not yet authorized to build.** Items marked *(proposed)* are my defaults and still need Jon's OK.
 
 Reported by Jon: the destination airport he selected gets lost after he moves to another app for a while, and it used to stay for days.

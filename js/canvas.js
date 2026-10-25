@@ -33,7 +33,7 @@
             window.loadMapReady = true;
         }
     }
-    window.addEventListener('resize', resizeCanvas);
+    document.addEventListener("DOMContentLoaded", () => window.addEventListener('resize', resizeCanvas));
     document.addEventListener("DOMContentLoaded", resizeCanvas);
 
     // --- LANDMASS BOUNDING BOX (for pan/zoom clamping) ---

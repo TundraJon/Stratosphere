@@ -583,5 +583,5 @@
         else checkAutoTriggerAirportPopup();
         requestAnimationFrame(animate);
     }
-    requestAnimationFrame(animate);
+    document.addEventListener("DOMContentLoaded", () => requestAnimationFrame(animate));
 
