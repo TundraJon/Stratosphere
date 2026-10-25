@@ -332,50 +332,25 @@ Built as spec'd in the Build Queue. Jon's request (sent while v79 was being buil
 - Live GitHub Pages site (checked after the deploy, headless Chromium in a normal profile): `index.html` has 24 file references, all `?v=80`, and every numbered URL returns 200; the page loads from the numbered URLs with the map ready, the loader faded, no JS errors and no 4xx responses; Chrome's installability check still reports no errors and the manifest parses; the worker saved 27 entries with one copy of each file (for example only `js/state.js?v=80`); nothing was requested outside the site; and an offline reload still loads the app from the cache.
 - Not tested: a real phone, and other browsers' refresh behavior (for example Safari).
 
+### Build Log 22 (completed): v81, plane larger than the runway while it is in the air (airport popup)
+Built as spec'd in the Build Queue, with Jon's confirmed reading of the 140 to 160 MPH band (hysteresis).
+- [x] `js/airport-popup.js`: new constants `AIRPORT_POPUP_AIRBORNE_UP_MPH = 160`, `AIRPORT_POPUP_AIRBORNE_DOWN_MPH = 140`, `AIRPORT_POPUP_AIRBORNE_SCALE = 2` and `AIRPORT_POPUP_AIRBORNE_DURATION_MS = 1500`. On each draw the popup checks the speed (`STATE.plane.speed * 1.15078`): above 160 MPH it is "in the air", below 140 MPH it is "on the ground", and in between it keeps its previous state. Each flip eases the plane size over 1.5 s (same `easeInOutCubic` as the Overview/Follow snap); a reversal mid-ease starts from the current size. The plane's font size is now `AIRPORT_POPUP_PLANE_PX * (1 + (AIRPORT_POPUP_AIRBORNE_SCALE - 1) * blend)`: 50 px on the ground, 100 px in the air, in both Overview and Follow.
+- [x] `openAirportPopup()`: the size starts at the right value for the current speed with no animation.
+- [x] `js/state.js`: four new `STATE.airportPopup` fields (`airborne`, `airborneBlend`, `airborneChangeStart`, `airborneFromBlend`).
+- [x] `index.html`: all 24 `?v=` numbers are now 81.
+- [x] **One choice not in the spec:** if the popup is opened while the speed is inside the 140 to 160 band, there is no earlier state, so it starts airborne at 150 MPH or more and on the ground below 150 (the middle of the band).
+- [x] Left out, as spec'd: the four runway-detection values (60 ft, 150 ft, 7 degrees, 50 MPH), the Overview/Follow camera, the tap target, the cutscenes and the altitude readout are unchanged. The size is evaluated every draw regardless of whether the plane is in frame, so a plane arriving fast is already at the airborne size when it enters the picture.
+
+**Verification:** headless Chromium at 412x915, fake clock, plane speed driven directly, plane size read from the popup canvas draw call.
+- 23 checks pass: 50 px at 0, 139, 150 (was ground) and exactly 160 MPH; 161 MPH starts at 50 px, is 75 px at 0.75 s and 100 px at 1.5 s; 150 and exactly 140 MPH stay 100 px once airborne; below 140 it eases back, 75 px at 0.75 s; a reversal mid-ease continues from about 75 px with no jump and reaches 100 px 1.5 s later; speed wobbling between 159 and 161 does not flip it; it opens at the right size with no animation at 300, 60, 155 and 145 MPH; Overview and Follow (plane on a runway) give the same 50 px / 100 px; no JS errors.
+- Version check: 24 references, all `?v=81`. The earlier suites were rerun: offline cache, home, home marker, use-my-location, fonts, installable, popup close, destination save, startup race (0 of 30 loads), altitude diagnostic and altitude rule all pass; the version buster suite passes with its numbers shifted up by one (9 of 9). The pin test has one stale assertion (it expects a black runway glyph in the old build to compare against) that fails the same way on unchanged v80, so it is not from this build.
+- Not tested: a real phone and a real flight.
+
 ## Build Queue
 
 Fully specified work that is waiting for a go-ahead. Items leave this list in the same commit that builds them.
 
-### 1. Plane larger than the runway while it is in the air (airport popup)
-**Not yet authorized to build.** Would ship as v81 (every `?v=` number in
-`index.html` becomes 81).
-
-What Jon wants: in the airport popup, the plane is drawn at 2x its current
-size while it is in the air (50 px becomes 100 px, against a runway that is
-60 px wide in the Follow view), and at its normal 50 px on the ground. The
-size changes smoothly, not in a step.
-
-How "in the air" is decided (speed only, because the phone's altitude is
-unreliable, see Build Log 17). Speed is the same MPH the popup already uses
-(`STATE.plane.speed * 1.15078`):
-- Below 140 MPH: on the ground.
-- Above 160 MPH: in the air.
-- 140 to 160 MPH: the transition band between ground and air (takeoff and
-  landing). My reading, **to be confirmed by Jon**: the plane keeps whatever
-  state it was already in while the speed is inside this band, and flips only
-  when it crosses an end (160 going up, 140 going down). That stops the size
-  flickering when the speed hovers around one number.
-
-How it changes: each time the state flips, the size eases between 50 px and
-100 px over 1.5 seconds (same easing style as the existing Overview/Follow
-snap). If the speed turns back mid-ease, it eases from wherever it is. When
-the popup opens, the size starts at the right value for the current speed
-with no animation.
-
-Where: `js/airport-popup.js` (new constants for 140, 160, 2x and 1.5 s, and
-the plane's font size becomes `AIRPORT_POPUP_PLANE_PX` scaled by the blend)
-and `js/state.js` (a few new `STATE.airportPopup` fields, reset when the
-popup opens).
-
-Same airborne size in both Overview and Follow. Left alone: the four runway
-detection values (60 ft, 150 ft, 7 degrees, 50 MPH), the Overview/Follow
-camera, the tap target, the cutscenes and the altitude readout.
-
-Test plan: drive the plane speed with synthetic values and a fake clock;
-check 50 px below 140, 100 px above 160, hold inside the band per the
-previous state, the 1.5 s ease in both directions and a reversal mid-ease,
-the start value on open, no flicker at the thresholds, both views, then the
-full v64 to v80 suites, the version check for `?v=81`, and the live site.
+_Empty — nothing queued right now._
 
 ## Build Planner
 

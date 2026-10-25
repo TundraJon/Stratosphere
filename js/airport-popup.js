@@ -21,6 +21,11 @@
         STATE.airportPopup.cameraBlend = 0;
         STATE.airportPopup.snapStartTime = null;
         STATE.airportPopup.lockedRunway = null;
+        // Start at the size that matches the current speed, with no animation
+        // (inside the 140-160 band there is no earlier state, so use its middle).
+        STATE.airportPopup.airborne = STATE.plane.speed * 1.15078 >= (AIRPORT_POPUP_AIRBORNE_UP_MPH + AIRPORT_POPUP_AIRBORNE_DOWN_MPH) / 2;
+        STATE.airportPopup.airborneBlend = STATE.airportPopup.airborne ? 1 : 0;
+        STATE.airportPopup.airborneChangeStart = null;
 
         const code = formatAirportDisplay(ap.name).split(' ')[0];
         const cityState = ap.name.substring(ap.name.indexOf('('));
@@ -69,6 +74,10 @@
     const AIRPORT_POPUP_LATERAL_MARGIN_FT = 60;  // GPS-noise allowance beyond the runway's real half-width, for "on runway" purposes
     const AIRPORT_POPUP_ALONG_TRACK_MARGIN_FT = 150; // allows touchdown/liftoff to register slightly before/after the painted threshold, not exactly at it
     const AIRPORT_POPUP_SNAP_DURATION_MS = 500;
+    const AIRPORT_POPUP_AIRBORNE_UP_MPH = 160;   // above this = in the air
+    const AIRPORT_POPUP_AIRBORNE_DOWN_MPH = 140; // below this = on the ground; between the two the previous state holds
+    const AIRPORT_POPUP_AIRBORNE_SCALE = 2;      // plane size multiplier while in the air
+    const AIRPORT_POPUP_AIRBORNE_DURATION_MS = 1500;
 
     function easeInOutCubic(t) {
         return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
@@ -263,6 +272,33 @@
         let renderCenterMX = overviewCenterMX, renderCenterMY = overviewCenterMY, renderScale = overviewScale;
         let followTargetMapPos = planeMapPos; // may become the centerline-snapped position below
 
+        // --- Plane size: bigger while in the air. Hysteresis on speed (flips
+        // above UP, flips back below DOWN, holds in between), eased over
+        // AIRPORT_POPUP_AIRBORNE_DURATION_MS each time it flips. ---
+        {
+            const airNowMs = performance.now();
+            const airSpeedMph = STATE.plane.speed * 1.15078;
+            let wantAirborne = STATE.airportPopup.airborne;
+            if (airSpeedMph > AIRPORT_POPUP_AIRBORNE_UP_MPH) wantAirborne = true;
+            else if (airSpeedMph < AIRPORT_POPUP_AIRBORNE_DOWN_MPH) wantAirborne = false;
+            if (wantAirborne !== STATE.airportPopup.airborne) {
+                STATE.airportPopup.airborne = wantAirborne;
+                STATE.airportPopup.airborneChangeStart = airNowMs;
+                STATE.airportPopup.airborneFromBlend = STATE.airportPopup.airborneBlend;
+            }
+            const airTarget = STATE.airportPopup.airborne ? 1 : 0;
+            if (STATE.airportPopup.airborneChangeStart !== null) {
+                const airElapsed = airNowMs - STATE.airportPopup.airborneChangeStart;
+                if (airElapsed < AIRPORT_POPUP_AIRBORNE_DURATION_MS) {
+                    const t = easeInOutCubic(airElapsed / AIRPORT_POPUP_AIRBORNE_DURATION_MS);
+                    STATE.airportPopup.airborneBlend = STATE.airportPopup.airborneFromBlend + (airTarget - STATE.airportPopup.airborneFromBlend) * t;
+                } else {
+                    STATE.airportPopup.airborneBlend = airTarget;
+                    STATE.airportPopup.airborneChangeStart = null;
+                }
+            }
+        }
+
         if (inFrame) {
             const nowMs = performance.now();
             const speedMph = STATE.plane.speed * 1.15078; // knots -> mph
@@ -435,7 +471,7 @@
             // Track-Up rotation term here -- just the plane's own heading,
             // same calibration offset used on the main map.
             ctx2.rotate((STATE.plane.hdg - 48) * Math.PI / 180);
-            ctx2.font = `${AIRPORT_POPUP_PLANE_PX}px sans-serif`;
+            ctx2.font = `${AIRPORT_POPUP_PLANE_PX * (1 + (AIRPORT_POPUP_AIRBORNE_SCALE - 1) * STATE.airportPopup.airborneBlend)}px sans-serif`;
             ctx2.textAlign = 'center';
             ctx2.textBaseline = 'middle';
             ctx2.fillText('✈️', 0, 0);

@@ -48,6 +48,10 @@
             cameraBlend: 0,
             snapStartTime: null,   // performance.now() timestamp, or null if no snap in progress
             snapFromBlend: 0,      // blend value captured at the moment a snap begins
+            airborne: false,            // in the air (speed above 160 MPH; back to false below 140; holds in between)
+            airborneBlend: 0,           // rendered plane size blend, 0 = ground size, 1 = airborne size
+            airborneChangeStart: null,  // performance.now() timestamp, or null if no size change in progress
+            airborneFromBlend: 0,       // airborneBlend value captured when the size change began
             lockedRunway: null,    // whichever runway the plane is currently on (or was just on, kept through a departure snap-out so it has something to reference) -- null once fully settled in Overview
             // Auto-open at 2nm from the destination. Manually dismissing it
             // blocks re-triggering for THAT SAME destination until the
