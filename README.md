@@ -181,6 +181,7 @@ Built as spec'd in the Build Queue (found while testing Build Log 11; it came fr
 - Plain loads with nothing forced: v70 had errors in 11 of 60 loads (more often than in earlier sequential runs, because the parallel loads compete for the CPU); the fixed version 0 of 60, and no stuck loading screens in either.
 - After loading, resizing the window still re-fits the canvas (824x1830 at 412x915, then 720x1560 at 360x780); the animation loop runs at 60 frames in a second; a GPS fix arrives and the telemetry keeps working; zero JS errors.
 - The v64, v65, v66, v67 and v70 test suites were rerun against this build: all pass (including Chrome's installability check, which an earlier run had tripped over this bug).
+- Live GitHub Pages site (checked after the deploy, 412x915 phone-style, 20 cold loads, 5 at a time): zero JS errors and the loading screen finished on all 20.
 - Not tested: a real phone.
 
 ### Build Log 13 (completed): v72, fix the airport popup close button
@@ -197,6 +198,7 @@ Built as spec'd in the Build Queue. Reported by Jon from a real phone: the close
 - The longest airport name in the list ("HDN - Yampa Valley (Hayden/Steamboat Springs, CO)") ends at 343.9 px and the glyph starts at about 363.5 px, so they never touch.
 - The popup still draws its runways. Screenshots checked by eye: before and after.
 - The v64, v65, v66, v67, v70 and v71 test suites were rerun: all pass.
+- Live GitHub Pages site (checked after the deploy): the close button measures 48 px wide with its right edge on the header's right edge; tapping the title leaves the popup open and tapping the × closes it.
 - Not tested: a real phone.
 
 ### Build Log 14 (completed): v73, remember the destination airport between launches
@@ -212,6 +214,7 @@ Built as spec'd in the Build Queue. Reported by Jon: the destination airport he 
 - A saved airport that is not in the list, and a corrupt saved value: both fall back to KMCO with no errors. Storage blocked entirely: the app loads and picking a destination still works for the session, with no errors.
 - With the Airports layer on, the cached map layer after a restore is identical to a full rebuild, so no stale or doubled label.
 - The v64, v65, v66, v67, v70, v71 and v72 test suites were rerun: all pass (the popup suite's one strict height check, 35.6 px against 36.6 px, is the known measurement artifact from Build Log 13).
+- Live GitHub Pages site (checked after the deploy): picking Denver and reloading shows DEN, not MCO, with the plane speed not set to 460; after the offline cache filled, a reload with the network off loads the app from the cache and still shows DEN; zero JS errors in the whole session.
 - Not tested: a real phone, and the "app in the background for a while" case itself (only page reloads).
 - **Existing behavior found while testing, not changed here:** when the Airports layer is on and the view is idle, picking a destination in the dropdown leaves the cached map layer out of date (it does not match a full rebuild) until the view changes, the same kind of problem as the home-location fix in Build Log 5. The cached layer skips drawing the destination's label, so the previous destination's label can be missing and the new one drawn twice until you pan or zoom. A one-line `STATE.render.cacheValid = false;` in `handleAirportSelect()` would fix it. It was not in this build's spec.
 
