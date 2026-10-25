@@ -249,6 +249,57 @@ Reported by Jon from a real phone: the Flight Info shows MCO but the Settings de
 - Test plan, at 412x915 with Chrome's back-forward cache disabled: first reproduce on the current version (pick BNA, remove the saved value, leave the page and come back through history: dropdown shows BNA while Flight Info shows MCO); then confirm after the change that the dropdown and Flight Info match in the same test (both MCO), and that with a saved destination both show it (both BNA); a normal reload still keeps them in step; `git diff` shows exactly one changed line; rerun the destination tests (Build Log 14) and the earlier suites; after the push, repeat the history-style check on the live GitHub Pages site.
 - Ships as: v75.
 
+### 3. Altitude diagnostic readout (raw readings in Settings)
+**Not yet authorized to build.** Items marked *(proposed)* are my defaults and still need Jon's OK.
+
+Jon's altitude reports: the readout swings between about 7,000 and 38,000 ft, and during takeoff and descent it is far too low (about 800 ft while the captain announces 10,000). Smoothing lag (a median of up to 5 readings over 60 s) is far too small to explain a 9,000 ft gap. Working guess, not yet confirmed: the phone's altitude sometimes comes from its barometer (cabin pressure, which is far below the aircraft's altitude during a climb and sits around 7,000 ft at cruise) and sometimes from GPS (about 38,000 ft at cruise), and the app cannot tell which. This readout shows the raw numbers so the next flight can confirm or kill that guess. Jon approved logging it.
+
+- Data: in `js/state.js`, add `rawAltitudeLog: []` to the `gps` object. In `onGPSSuccess()` (`js/controls.js`), for every fix (including fixes with no altitude), push `{ t: Date.now(), ft: <raw altitude in feet, or null>, accM: <pos.coords.altitudeAccuracy in meters, or null>, kts: <the fix's raw speed in knots, or null> }` and keep only the newest 30. This is read-only logging; the altitude calculation is not changed.
+- Display: a new group titled "Altitude diagnostics" in the Settings drawer, directly under the existing "Testing" group in `index.html`, holding one monospace block (`id="alt-diag"`, about 10 px, muted color, `white-space: pre`). First line: `Shown: 7,240 ft   fresh readings: 4` (the current `STATE.plane.altitude`, or `--`, and how many buffered readings are under 60 s old). Then the newest 12 raw readings, newest first, one per line: time as `HH:MM:SS`, raw altitude as `38,120 ft` (or `no altitude`), accuracy as `±15 m` (or `±--`), and speed as `452 kt` (or `-- kt`). Speed is included so each line can be matched to takeoff, climb, cruise and descent.
+- Update: a small `updateAltitudeDiag()` in `js/controls.js`, called from the end of `onGPSSuccess()`; it does nothing if the element is missing.
+- Not included: no change to how the shown altitude is computed (that is Queue item 4); the log lives in memory only, so a page reload restarts it *(proposed)*; no copy or export button *(proposed)*; nothing is saved to `localStorage`.
+- Test plan, at 412x915: feed synthetic fixes through `onGPSSuccess()` (altitude, accuracy and speed present; altitude missing; accuracy missing) and check the lines render exactly as described; the log is capped at 30 entries and the display at 12; the shown altitude (`val-altitude`) is identical to the previous version for the same inputs; open the Settings drawer and check the layout by eye (it already scrolls); zero JS errors; rerun the earlier suites; after the push, repeat on the live GitHub Pages site.
+- Ships as: v76.
+
+### 4. Altitude: require 3 consistent readings before the shown value changes
+**Not yet authorized to build.** Items marked *(proposed)* are my defaults and still need Jon's OK. Build after item 3 so the next flight shows what the raw readings really look like.
+
+Jon's rule: the shown altitude should only change after 3 relatively consistent readings, within a few hundred feet at most. Today there is no such rule: `onGPSSuccess()` takes the median of however many readings under 60 s old are in a 5-reading buffer, so with one or two fresh readings a single spike goes straight to the screen, and three bad readings out of five win.
+
+- Where: `js/controls.js`, `onGPSSuccess()`, the altitude buffer push and the median block (currently about lines 304 to 337).
+- Buffer: keep `STATE.gps.recentAltitudes` (last 5 `{value, time}` entries) and `ALTITUDE_MAX_AGE_MS` (60 s) as they are.
+- Rule: take the 3 newest buffer entries that are under 60 s old. If there are 3, and the step from the oldest to the middle and from the middle to the newest are each at most 300 ft *(proposed: `ALTITUDE_CONSISTENCY_FT = 300`)*, set `STATE.plane.altitude` to the median of those 3, rounded. Otherwise leave `STATE.plane.altitude` as it is (hold).
+- Why each step, not the total spread: with a 3 s poll a steady 3,000 ft/min climb moves about 150 ft per poll, so three readings span about 300 ft; a limit on the total spread would freeze the display in normal climbs. A 300 ft step still passes climbs and descents up to about 6,000 ft/min and rejects jumps like 7,000 to 38,000.
+- First reading: nothing is shown (`--`) until 3 consistent readings have arrived (about 9 s at the 3 s poll).
+- Stale value *(proposed)*: if no update has been accepted for 60 s, show `--` instead of freezing on the last value indefinitely, as it does today.
+- Not included: no choice between a barometer and a GPS source (the "take the higher of the two" idea waits for the item 3 readout); no change to the altitude status dot, heading or speed smoothing.
+- Test plan: feed synthetic fixes through `onGPSSuccess()` with a faked clock: steady 35,000 ft within 50 ft is shown after 3 readings; a single 7,000 ft spike among 35,000 ft readings never reaches the screen; two spikes in a row never reach the screen; alternating 7,000 and 38,000 holds the last good value and then shows `--` after 60 s; a steady 3,000 ft/min climb (150 ft per poll) follows the readings; a genuine step to a new level shows after 3 readings at that level; missing altitudes are skipped; the first display needs 3 readings; no JS errors; rerun the earlier suites; repeat on the live site.
+- Ships as: v77.
+
+### 5. Replace the destination runway glyph with a 📍 and remove its orientation code
+**Not yet authorized to build.** Items marked *(proposed)* are my defaults and still need Jon's OK.
+
+Jon: the destination's black "≡---" runway glyph is no longer needed, a simple 📍 is fine, and the code that orients the glyph should go too. Jon chose to put the pin's tip exactly on the airport.
+
+- `js/live-layer.js`: replace the whole "Draw Target Destination Runway Marker" block (from its comment through its closing brace, just before `drawFixedLabel(targetPos, ...)`) with a 📍 drawn the same way the home 🏠 is: `drawFixedLabel(targetPos, () => { ... ctx.fillText("📍", 0, 0); })` with `textAlign` `"center"`, `textBaseline` `"bottom"` (tuned in testing so the pin's tip lands within 2 px of the airport's position) and a font of `scaledFontPx(16)` *(proposed: the same size as the home pin)* in `sans-serif`. This removes the bearing and 2 NM lock logic that lives inside that block.
+- Remove, because nothing else uses them: `STATE.runwayLocked` and `STATE.runwayLockedBearing` and their comment in `js/touch.js` (about lines 28 to 32); the reset of both, and its comment, in `handleAirportSelect()` in `js/controls.js` (about lines 9 to 12); `runwayGlyphFontPx()` and its comment in `js/projection.js` (about lines 25 to 38).
+- Comment-only updates so they stop describing the glyph: the live layer header comment in `js/live-layer.js` (lines 7 and 8), the `≡---` mention in the `isTapOnDestinationMarker` comment in `js/touch.js`, and the "runway marker" mention in `js/terminator.js` (about line 512).
+- Not included: the destination label (code, official name, city) keeps its position and text; the tap target stays the code label exactly as today (the pin itself is not tappable) and `isTapOnDestinationMarker()` is untouched; the cutscene's own `≡` runway markers and the popup's runway drawing are separate and untouched; the magenta route line stays.
+- Test plan, at 412x915: the pin is drawn at the destination and its tip is within 2 px of the airport's projected position at several zoom levels; no black runway box is drawn near the destination; the pin keeps a constant size when zooming and stays upright in Track-Up; picking another destination moves it; the label does not overlap the pin badly (by eye, with a screenshot); tapping the code label still opens the airport popup; a search of `js/` finds no remaining use of `runwayLocked`, `runwayLockedBearing`, `runwayGlyphFontPx` or the glyph's bearing code; rerun the earlier suites; repeat on the live site.
+- Ships as: v78.
+
+### 6. Auto-open the airport approach screen at 2 NM instead of 1 NM
+**Not yet authorized to build.**
+
+Jon expected the approach and landing screen to open at 2 NM, but it opened as the plane passed over the end of the runway. The code (and the v62 note in Build Log 1) says 1 NM, measured from the destination's listed position (the airport reference point), which on a long runway is about where the runway end is. The 2 NM Jon remembers was the old runway glyph's orientation lock, which Queue item 5 removes.
+
+- `js/cutscene.js`: `const AUTO_TRIGGER_RADIUS_NM = 1;` becomes `2`, and the comment above it (`1nm`) becomes `2nm`.
+- `js/airport-popup.js`, `closeAirportPopup()`: it has its own hard-coded `if (distNm <= 1)` that decides whether to record a dismissal. Change it to `if (distNm <= AUTO_TRIGGER_RADIUS_NM)` (the constant lives in `js/cutscene.js` and is read when the function runs) so the two can never disagree. If only the constant changed, closing the popup between 1 and 2 NM would not record the dismissal and the popup would pop straight back open. Update the `1nm` comment there too.
+- `js/state.js`: the `1nm` comment on `autoTriggerDismissedFor` becomes `2nm`.
+- Unchanged: the re-arm distance (9 NM) and re-arm time (20 minutes); the distance is still measured to the destination's listed position, not to the runway end; manually opening the popup by tapping.
+- Test plan, at 412x915 with the plane placed at set distances from the destination and a faked clock: the popup does not open at 2.5 NM or 2.1 NM and opens at 1.9 NM and at 1.0 NM; closing it at 1.5 NM records the dismissal and it does not reopen; it reopens after the plane clears 9 NM, and after 20 minutes; picking a new destination is not blocked by an old dismissal; no JS errors; rerun the earlier suites; repeat on the live site.
+- Ships as: v79.
+
 ## Build Planner
 
 Ideas and known gaps with no committed design yet. Resolved, built, dropped or superseded items are deleted from here, and their history lives in the Build Log.
