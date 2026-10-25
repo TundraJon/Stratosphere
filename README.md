@@ -136,23 +136,25 @@ Built as spec'd in the Build Queue. Comment-only change: no code or behavior tou
 - Headless Chromium at Pixel 7 size (412x915): zero JS errors, and the takeoff cutscene's runway still renders `rgb(117, 117, 117)` (`#757575`).
 - The page-load part of the fonts test was rerun: passes.
 
+### Build Log 10 (completed): v69, remove Wyoming's dead-time season
+Built as spec'd in the Build Queue. Jon's reason: Wyoming typically goes straight from fall colors to snow cover overnight. Jon chose option 1, so the switch happens on Oct 11 (when snow starts) and snow's start date did not move.
+- [x] `js/seasonal.js`, the `"Wyoming"` entry: `dead: [[10,21],[12,1]]` changed to `dead: null`. That is the only changed line. The entry now reads `seasons: { fall: [[9,21],[10,20]], dead: null, snow: [[10,11],[4,20]], spring: [[4,21],[6,30]] }`.
+- [x] Result: Sep 21 to Oct 10 fall; Oct 11 to Apr 20 snow, with no brown stretch in between; Apr 21 to Jun 30 spring; Jul 1 to Sep 20 no season (the plain default land color, as before).
+- [x] Left alone, as spec'd: fall, snow and spring dates; every other state; all code.
+
+**Verification:** headless Chromium at Pixel 7 size (412x915), the previous version and the new version side by side.
+- `git diff` shows exactly one changed line.
+- `getActiveSeasonColors` was run for all 51 entries (50 states plus DC) on every day of 2026 and of the leap year 2028, 731 days each. The other 50 are identical to the previous version on every day.
+- Wyoming boundary dates: Sep 20 none; Sep 21 fall; Oct 10 fall; Oct 11 snow; Oct 20 snow; Oct 21 snow; Nov 15 snow; Dec 2 snow; Apr 20 snow; Apr 21 spring; Jun 30 spring; Jul 1 none. All as specified.
+- Wyoming no longer returns the dead-time season on any day. Only its 84 old dead-time days (42 per year) changed, and all of them are now snow.
+- The page loads, the map is ready and there are zero JS errors, in both versions.
+- Not checked: how the new Wyoming colors look on screen (only the season picker's output was tested).
+
 ## Build Queue
 
 Fully specified work that is waiting for a go-ahead. Items leave this list in the same commit that builds them.
 
-### 1. Remove Wyoming's dead-time season
-**Not yet authorized to build.**
-
-Promoted from the Build Planner (Wyoming's dates). Jon's reason: Wyoming typically goes straight from fall colors to snow cover overnight. Jon chose option 1: the switch happens on Oct 11, when snow starts, and snow's start date does not move.
-
-- Where: `js/seasonal.js`, the `"Wyoming"` entry in the state season data.
-- What: change `dead: [[10,21],[12,1]]` to `dead: null` on that one line, the same way other states with no dead-time are written. The result is `seasons: { fall: [[9,21],[10,20]], dead: null, snow: [[10,11],[4,20]], spring: [[4,21],[6,30]] }`.
-- Behavior after: Sep 21 to Oct 10 fall; Oct 11 to Apr 20 snow (no brown stretch in between); Apr 21 to Jun 30 spring; Jul 1 to Sep 20 no season (the plain default land color, as before). The picker gives the window that started most recently priority, so fall's nominal end of Oct 20 stays overridden by snow from Oct 11, exactly as it is today.
-- Not included: fall, snow and spring dates are unchanged; no other state is touched; no code changes.
-- Test plan: `git diff` shows exactly one changed line, in `js/seasonal.js`; in the page, check `getActiveSeasonColors('Wyoming', date)` for Sep 20, Sep 21, Oct 10, Oct 11, Oct 20, Oct 21, Nov 15, Dec 2, Apr 20, Apr 21, Jun 30 and Jul 1, and confirm no date in the whole year returns the dead-time season for Wyoming; compare every day of the year for all other states against the previous version and confirm nothing else changed; load check at Pixel 7 size (412x915) with zero errors.
-- Ships as: v69.
-
-### 2. Installable app (manifest and icons)
+### 1. Installable app (manifest and icons)
 **Not yet authorized to build.**
 
 Promoted from the Build Planner (installable app). Jon chose the icon (his globe image, with the fake transparency removed and the edge cleaned up) and said "your defaults" for everything else. Android and iPhone. Jon also asked for a browser-tab favicon from the same artwork and chose to fold it into this item (one build, one `<head>` edit).

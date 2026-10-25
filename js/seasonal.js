@@ -442,7 +442,7 @@
         },
         "Wyoming": {
             tier: "large",
-            seasons: { fall: [[9,21],[10,20]], dead: [[10,21],[12,1]], snow: [[10,11],[4,20]], spring: [[4,21],[6,30]] }
+            seasons: { fall: [[9,21],[10,20]], dead: null, snow: [[10,11],[4,20]], spring: [[4,21],[6,30]] }
         }
     };
 
