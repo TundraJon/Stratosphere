@@ -231,25 +231,25 @@ Built as spec'd in the Build Queue (found while testing Build Log 14; the same k
 - The v64, v65, v66, v67, v70, v71, v72 and v73 test suites were rerun: all pass. (The popup test had two outdated assertions of its own: a strict height check and a check that the old version still had the bug; both were corrected in the test.)
 - Not tested: a real phone. The live site is checked once at the end of this group of builds (see the last Build Log in the group).
 
+### Build Log 16 (completed): v75, stop Chrome restoring the destination dropdown on its own
+Built as spec'd in the Build Queue. Reported by Jon from a real phone: the Flight Info showed MCO while the Settings dropdown showed BNA, and changing to another airport and back to BNA worked (the Flight Info then showed BNA, which Jon confirmed).
+- [x] `index.html`: `<select id="sel-airport" onchange="handleAirportSelect()">` is now `<select id="sel-airport" autocomplete="off" onchange="handleAirportSelect()">`. That is the only changed line.
+- [x] Cause (reproduced): when Chrome restores a page it puts the dropdown back to its last value by itself, while the app's own destination resets to KMCO, and the Flight Info reads the app's destination. With the saved-destination code (Build Log 14) the two agree when a saved value exists, but not when none exists (for example a destination picked before that code shipped, or saved data cleared by the browser). The attribute tells Chrome not to restore the dropdown, so it is always set by the app: the saved destination if there is one, otherwise KMCO.
+- [x] One-time effect, as spec'd: a phone that was showing BNA in the dropdown with no saved destination shows MCO in both places after this change, until Jon picks a destination once (that pick is then saved).
+- [x] Left out, as spec'd: the home location boxes and checkbox are unchanged (they save on every change); no code changes.
+
+**Verification:** headless Chromium at 412x915 with Chrome's back-forward cache disabled, going to another page and back through history (this behaves like a restored tab).
+- Reproduced first on v74: with BNA picked and no saved value, the dropdown showed BNA while the Flight Info and the app's target showed MCO (the mismatch Jon sees).
+- With the attribute: in the same test the dropdown, the Flight Info and the target all show MCO (in step). With a saved BNA, all three show BNA. A normal reload also keeps them in step in both cases. Zero JS errors.
+- `git diff` shows exactly one changed line.
+- The v64 to v74 test suites were rerun: all pass.
+- Not tested: a real phone.
+
 ## Build Queue
 
 Fully specified work that is waiting for a go-ahead. Items leave this list in the same commit that builds them.
 
-### 1. Stop Chrome restoring the destination dropdown on its own
-**Not yet authorized to build.**
-
-Reported by Jon from a real phone: the Flight Info shows MCO but the Settings destination dropdown shows BNA. Changing to another airport updates the Flight Info at once, and changing back to BNA shows BNA in the Flight Info (Jon confirmed), so selecting works and only the state after returning to the app is wrong.
-
-- Cause (reproduced at 412x915 by going back to the page through browser history, which behaves like a restored tab, with Chrome's back-forward cache disabled): when Chrome restores a page it puts the dropdown back to its last value (BNA) by itself, while the app's own destination resets to KMCO, and the Flight Info reads the app's destination. With the saved-destination code (Build Log 14) the two agree when a saved value exists, but they still disagree when none exists, for example when the destination was picked before that code shipped, or when the browser has cleared the page's saved data. That is the state Jon is in.
-- Where: `index.html`, the destination dropdown, `<select id="sel-airport" onchange="handleAirportSelect()">`.
-- What: add `autocomplete="off"` to that tag, so it reads `<select id="sel-airport" autocomplete="off" onchange="handleAirportSelect()">`. That tells Chrome not to restore the dropdown's value by itself. It is the only change.
-- Result: the dropdown is always set by the app: the saved destination if there is one, otherwise KMCO. In a scratch-copy test with this attribute, the dropdown and Flight Info agreed after a history-style restore whether or not a saved value existed (BNA and BNA with a saved value, MCO and MCO without one).
-- One-time effect: a phone that is currently showing BNA in the dropdown but has no saved destination will show MCO in both places after this change, until Jon picks a destination once (that pick is then saved).
-- Not included: the home location boxes and checkbox are not changed (they save on every change, so they are in step with what Chrome restores); no code changes.
-- Test plan, at 412x915 with Chrome's back-forward cache disabled: first reproduce on the current version (pick BNA, remove the saved value, leave the page and come back through history: dropdown shows BNA while Flight Info shows MCO); then confirm after the change that the dropdown and Flight Info match in the same test (both MCO), and that with a saved destination both show it (both BNA); a normal reload still keeps them in step; `git diff` shows exactly one changed line; rerun the destination tests (Build Log 14) and the earlier suites; after the push, repeat the history-style check on the live GitHub Pages site.
-- Ships as: v75.
-
-### 2. Altitude diagnostic readout (raw readings in Settings)
+### 1. Altitude diagnostic readout (raw readings in Settings)
 **Not yet authorized to build.** Items marked *(proposed)* are my defaults and still need Jon's OK.
 
 Jon's altitude reports: the readout swings between about 7,000 and 38,000 ft, and during takeoff and descent it is far too low (about 800 ft while the captain announces 10,000). Smoothing lag (a median of up to 5 readings over 60 s) is far too small to explain a 9,000 ft gap. Working guess, not yet confirmed: the phone's altitude sometimes comes from its barometer (cabin pressure, which is far below the aircraft's altitude during a climb and sits around 7,000 ft at cruise) and sometimes from GPS (about 38,000 ft at cruise), and the app cannot tell which. This readout shows the raw numbers so the next flight can confirm or kill that guess. Jon approved logging it.
@@ -261,7 +261,7 @@ Jon's altitude reports: the readout swings between about 7,000 and 38,000 ft, an
 - Test plan, at 412x915: feed synthetic fixes through `onGPSSuccess()` (altitude, accuracy and speed present; altitude missing; accuracy missing) and check the lines render exactly as described; the log is capped at 30 entries and the display at 12; the shown altitude (`val-altitude`) is identical to the previous version for the same inputs; open the Settings drawer and check the layout by eye (it already scrolls); zero JS errors; rerun the earlier suites; after the push, repeat on the live GitHub Pages site.
 - Ships as: v76.
 
-### 3. Altitude: require 3 consistent readings before the shown value changes
+### 2. Altitude: require 3 consistent readings before the shown value changes
 **Not yet authorized to build.** Items marked *(proposed)* are my defaults and still need Jon's OK. Build after item 3 so the next flight shows what the raw readings really look like.
 
 Jon's rule: the shown altitude should only change after 3 relatively consistent readings, within a few hundred feet at most. Today there is no such rule: `onGPSSuccess()` takes the median of however many readings under 60 s old are in a 5-reading buffer, so with one or two fresh readings a single spike goes straight to the screen, and three bad readings out of five win.
@@ -276,7 +276,7 @@ Jon's rule: the shown altitude should only change after 3 relatively consistent 
 - Test plan: feed synthetic fixes through `onGPSSuccess()` with a faked clock: steady 35,000 ft within 50 ft is shown after 3 readings; a single 7,000 ft spike among 35,000 ft readings never reaches the screen; two spikes in a row never reach the screen; alternating 7,000 and 38,000 holds the last good value and then shows `--` after 60 s; a steady 3,000 ft/min climb (150 ft per poll) follows the readings; a genuine step to a new level shows after 3 readings at that level; missing altitudes are skipped; the first display needs 3 readings; no JS errors; rerun the earlier suites; repeat on the live site.
 - Ships as: v77.
 
-### 4. Replace the destination runway glyph with a 📍 and remove its orientation code
+### 3. Replace the destination runway glyph with a 📍 and remove its orientation code
 **Not yet authorized to build.** Items marked *(proposed)* are my defaults and still need Jon's OK.
 
 Jon: the destination's black "≡---" runway glyph is no longer needed, a simple 📍 is fine, and the code that orients the glyph should go too. Jon chose to put the pin's tip exactly on the airport. Jon clarified that the destination's 3-letter code text is the tap target he wants for opening the runway layout screen, and that this already works; what makes it hard to hit is another word sitting on top of it (the doubled label from Queue item 1). So the tap target does not change.
@@ -288,7 +288,7 @@ Jon: the destination's black "≡---" runway glyph is no longer needed, a simple
 - Test plan, at 412x915: the pin is drawn at the destination and its tip is within 2 px of the airport's projected position at several zoom levels; no black runway box is drawn near the destination; the pin keeps a constant size when zooming and stays upright in Track-Up; picking another destination moves it; the label does not overlap the pin badly (by eye, with a screenshot); tapping the 3-letter code text still opens the airport popup, as today, at several zoom levels and in Track-Up; a search of `js/` finds no remaining use of `runwayLocked`, `runwayLockedBearing`, `runwayGlyphFontPx` or the glyph's bearing code; rerun the earlier suites; repeat on the live site.
 - Ships as: v78.
 
-### 5. Auto-open the airport approach screen at 2 NM instead of 1 NM
+### 4. Auto-open the airport approach screen at 2 NM instead of 1 NM
 **Not yet authorized to build.**
 
 Jon expected the approach and landing screen to open at 2 NM, but it opened as the plane passed over the end of the runway. The code (and the v62 note in Build Log 1) says 1 NM, measured from the destination's listed position (the airport reference point), which on a long runway is about where the runway end is. The 2 NM Jon remembers was the old runway glyph's orientation lock, which Queue item 5 removes.
