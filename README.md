@@ -235,6 +235,20 @@ Found while testing Build Log 14 (it is an existing problem, the same kind as th
 - Test plan, at 412x915 with a 2x pixel ratio: first reproduce on the current version, that is, with the Airports layer on and the view idle, pick a new destination and compare the cached map layer (the cache canvas, which has no plane in it) with a forced full rebuild; they differ today. After the fix they must match after one pick and after several picks in a row (three different destinations); a before and after screenshot shows MCO's label back and DEN drawn once; with the Airports layer off, nothing changes; rerun the destination save and restore tests (Build Log 14) and the earlier suites; after the push, repeat the check on the live GitHub Pages site.
 - Ships as: v74.
 
+### 2. Stop Chrome restoring the destination dropdown on its own
+**Not yet authorized to build.**
+
+Reported by Jon from a real phone: the Flight Info shows MCO but the Settings destination dropdown shows BNA. Changing to another airport updates the Flight Info at once, and changing back to BNA shows BNA in the Flight Info (Jon confirmed), so selecting works and only the state after returning to the app is wrong.
+
+- Cause (reproduced at 412x915 by going back to the page through browser history, which behaves like a restored tab, with Chrome's back-forward cache disabled): when Chrome restores a page it puts the dropdown back to its last value (BNA) by itself, while the app's own destination resets to KMCO, and the Flight Info reads the app's destination. With the saved-destination code (Build Log 14) the two agree when a saved value exists, but they still disagree when none exists, for example when the destination was picked before that code shipped, or when the browser has cleared the page's saved data. That is the state Jon is in.
+- Where: `index.html`, the destination dropdown, `<select id="sel-airport" onchange="handleAirportSelect()">`.
+- What: add `autocomplete="off"` to that tag, so it reads `<select id="sel-airport" autocomplete="off" onchange="handleAirportSelect()">`. That tells Chrome not to restore the dropdown's value by itself. It is the only change.
+- Result: the dropdown is always set by the app: the saved destination if there is one, otherwise KMCO. In a scratch-copy test with this attribute, the dropdown and Flight Info agreed after a history-style restore whether or not a saved value existed (BNA and BNA with a saved value, MCO and MCO without one).
+- One-time effect: a phone that is currently showing BNA in the dropdown but has no saved destination will show MCO in both places after this change, until Jon picks a destination once (that pick is then saved).
+- Not included: the home location boxes and checkbox are not changed (they save on every change, so they are in step with what Chrome restores); no code changes.
+- Test plan, at 412x915 with Chrome's back-forward cache disabled: first reproduce on the current version (pick BNA, remove the saved value, leave the page and come back through history: dropdown shows BNA while Flight Info shows MCO); then confirm after the change that the dropdown and Flight Info match in the same test (both MCO), and that with a saved destination both show it (both BNA); a normal reload still keeps them in step; `git diff` shows exactly one changed line; rerun the destination tests (Build Log 14) and the earlier suites; after the push, repeat the history-style check on the live GitHub Pages site.
+- Ships as: v75.
+
 ## Build Planner
 
 Ideas and known gaps with no committed design yet. Resolved, built, dropped or superseded items are deleted from here, and their history lives in the Build Log.
