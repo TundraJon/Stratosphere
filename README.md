@@ -343,10 +343,23 @@ _Empty — nothing queued right now._
 Ideas and known gaps with no committed design yet. Resolved, built, dropped or superseded items are deleted from here, and their history lives in the Build Log.
 
 ### Surfaced in earlier sessions
-1. **GPS-noise tuning after your flight test:** 60 ft lateral margin,
-   150 ft along-track margin, 7° alignment, 50 mph threshold.
-   Waiting on real-world results from the GPS-loss flight test. The 60 ft
-   lateral margin, 150 ft along-track margin and 7° alignment are the
-   values to watch.
-2. **Track-Up mode never gets the idle-snapshot caching:** a limitation,
+1. **Track-Up mode never gets the idle-snapshot caching:** a limitation,
    not a regression
+2. **Plane larger than the runway while it is in the air (airport popup):**
+   In the popup the plane is always drawn at 50 px (`AIRPORT_POPUP_PLANE_PX`)
+   and the Follow view draws the runway 60 px wide, so the plane never looks
+   airborne. Idea (Jon): draw the plane larger than the runway while it is
+   in the air, and at its normal size on the ground, the same convention the
+   takeoff and landing cutscenes use (scale 1.0 on the ground, up to 4.0 in
+   the air). Numbers that already exist and could help decide "in the air":
+   the cutscene trigger speeds (takeoff arms below 50 MPH and fires above
+   70 MPH; landing arms at 400 MPH or more and fires below 140 MPH), the
+   cutscene's liftoff speed (160 MPH), and the popup's own "on this runway"
+   test and 50 MPH Overview/Follow threshold. Open questions: what exactly
+   counts as "in the air" (speed alone is the only signal available, because
+   the phone's altitude is unreliable, see Build Log 17); how much bigger
+   (for example 1.5x to 2x the runway width, or the cutscene's full 4.0x);
+   whether the size changes in a step or smoothly with speed; and how
+   touchdown and liftoff are told apart from taxiing. The four values from
+   the old GPS-noise item (60 ft, 150 ft, 7 degrees, 50 MPH) stay as they
+   are; Jon's two takeoffs and two landings worked nearly perfectly with them.
