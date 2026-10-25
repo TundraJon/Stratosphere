@@ -222,7 +222,18 @@ Built as spec'd in the Build Queue. Reported by Jon: the destination airport he 
 
 Fully specified work that is waiting for a go-ahead. Items leave this list in the same commit that builds them.
 
-_Empty — nothing queued right now._
+### 1. Fix the stale map layer after picking a destination
+**Not yet authorized to build.**
+
+Found while testing Build Log 14 (it is an existing problem, the same kind as the home-location fix in Build Log 5). Jon asked for it to be logged.
+
+- Symptom (reproduced at 412x915 with the Airports layer on, the view idle, and a pick of Denver while the destination was Orlando): the previous destination's label (MCO) is missing and the new destination's label (DEN) is drawn twice, slightly ghosted, until the view changes (pan, zoom or a toggle). A full redraw shows MCO back and DEN once.
+- Cause: the cached map layer skips drawing the label of the current destination (the live layer draws that one), but the cache's change check in `draw()` (`js/live-layer.js`) does not include the destination, so picking a new one reuses the old snapshot.
+- Where: `js/controls.js`, `handleAirportSelect()`.
+- What: add `STATE.render.cacheValid = false;` on its own line right before the function's final `draw();`, with a one-line comment saying why (the cached map layer skips drawing the destination's label, so it must be rebuilt). Same one-line approach as the home-location fix. `js/live-layer.js` is not touched.
+- Not included: no other state that is missing from the cache check is changed; the destination-restore code from Build Log 14 already does this and is not touched; no changes to how picking a destination otherwise works.
+- Test plan, at 412x915 with a 2x pixel ratio: first reproduce on the current version, that is, with the Airports layer on and the view idle, pick a new destination and compare the cached map layer (the cache canvas, which has no plane in it) with a forced full rebuild; they differ today. After the fix they must match after one pick and after several picks in a row (three different destinations); a before and after screenshot shows MCO's label back and DEN drawn once; with the Airports layer off, nothing changes; rerun the destination save and restore tests (Build Log 14) and the earlier suites; after the push, repeat the check on the live GitHub Pages site.
+- Ships as: v74.
 
 ## Build Planner
 
