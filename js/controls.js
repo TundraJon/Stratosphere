@@ -4,6 +4,7 @@
         if (!val) return;
         const ap = JSON.parse(val);
         STATE.target = ap;
+        saveDestination(ap.name);
 
         // New destination - the runway marker should track live again until
         // it gets within 2NM of this new airport.
@@ -16,6 +17,43 @@
 
         draw();
     }
+
+    const DESTINATION_STORAGE_KEY = 'stratosphere.destination';
+
+    // Saves the selected destination's name (e.g. "KMCO (Orlando, FL)") so it
+    // survives the page being reloaded or discarded in the background. Every
+    // storage call is wrapped in try/catch: if storage is unavailable
+    // (private mode, blocked site data), the app behaves as if nothing were saved.
+    function saveDestination(name) {
+        try {
+            localStorage.setItem(DESTINATION_STORAGE_KEY, name);
+        } catch (e) { /* storage unavailable -- nothing to do */ }
+    }
+
+    // Restores the saved destination on launch: finds the dropdown option for
+    // that airport and selects it. Deliberately does NOT go through
+    // handleAirportSelect(), which also sets the plane speed to 460 and
+    // resets the runway lock -- neither should happen at launch. A missing,
+    // unreadable or no-longer-listed saved name leaves the default (KMCO).
+    function loadDestination() {
+        let name = null;
+        try {
+            name = localStorage.getItem(DESTINATION_STORAGE_KEY);
+        } catch (e) { return; }
+        if (!name) return;
+        const select = document.getElementById('sel-airport');
+        const opt = Array.from(select.options).find((o) => {
+            try { return JSON.parse(o.value).name === name; } catch (e) { return false; }
+        });
+        if (!opt) return;
+        select.value = opt.value;
+        STATE.target = JSON.parse(opt.value);
+        // Same reason as the home-location fix: the cached map layer skips
+        // drawing the destination's label, so it must be rebuilt.
+        STATE.render.cacheValid = false;
+        draw();
+    }
+    document.addEventListener("DOMContentLoaded", loadDestination);
 
     function toggleTrackUp() {
         STATE.view.trackUp = !STATE.view.trackUp;

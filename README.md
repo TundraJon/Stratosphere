@@ -199,22 +199,27 @@ Built as spec'd in the Build Queue. Reported by Jon from a real phone: the close
 - The v64, v65, v66, v67, v70 and v71 test suites were rerun: all pass.
 - Not tested: a real phone.
 
+### Build Log 14 (completed): v73, remember the destination airport between launches
+Built as spec'd in the Build Queue. Reported by Jon: the destination airport he selected gets lost after he moves to another app for a while, and it used to stay for days. Jon answered "no" to saving the other settings.
+- [x] `js/controls.js`: new `DESTINATION_STORAGE_KEY` (`stratosphere.destination`), `saveDestination(name)` and `loadDestination()`. The saved value is the airport's `name` string (for example `KDEN (Denver, CO)`). Every storage call is inside `try/catch`.
+- [x] Save: `handleAirportSelect()` calls `saveDestination(ap.name)` right after `STATE.target = ap`.
+- [x] Restore: `loadDestination()` runs on `DOMContentLoaded` (registered after `populateAirports`, so the dropdown exists). It finds the dropdown option whose airport name matches, sets the dropdown to it and sets `STATE.target`. It does not call `handleAirportSelect()`, which also sets the plane speed to 460 and resets the runway lock. It sets `STATE.render.cacheValid = false` before `draw()`, for the same reason as the home-location fix. A missing, unreadable or no-longer-listed saved name leaves the default (KMCO).
+- [x] Left out, as spec'd and as Jon chose: no other settings are saved (day/night mode, map layers, speed unit); the way picking a destination works did not change.
+- [x] **Cause not confirmed:** the destination was never saved before this build (the original single-file app did not save it either), so it could only last while the page stayed loaded. My explanation was that Android reloads a page left in the background, but Jon says he does not see the radar loading screen when he comes back, which does not fit a reload. This build fixes the symptom either way, because the destination now survives any reload or discard. If it still gets lost with no loading screen, that is a different problem and needs a new look.
+
+**Verification:** headless Chromium at 412x915 with a 2x pixel ratio.
+- Fresh profile: starts on KMCO with nothing saved. Picking Denver saves `KDEN (Denver, CO)` and sets the plane speed to 460 (as picking always does); after a reload the dropdown shows DEN, "EN ROUTE TO" shows DEN, the target is Denver, and the plane speed is 0, not 460. Picking another destination (Albuquerque) replaces the saved one, and it survives a reload.
+- A saved airport that is not in the list, and a corrupt saved value: both fall back to KMCO with no errors. Storage blocked entirely: the app loads and picking a destination still works for the session, with no errors.
+- With the Airports layer on, the cached map layer after a restore is identical to a full rebuild, so no stale or doubled label.
+- The v64, v65, v66, v67, v70, v71 and v72 test suites were rerun: all pass (the popup suite's one strict height check, 35.6 px against 36.6 px, is the known measurement artifact from Build Log 13).
+- Not tested: a real phone, and the "app in the background for a while" case itself (only page reloads).
+- **Existing behavior found while testing, not changed here:** when the Airports layer is on and the view is idle, picking a destination in the dropdown leaves the cached map layer out of date (it does not match a full rebuild) until the view changes, the same kind of problem as the home-location fix in Build Log 5. The cached layer skips drawing the destination's label, so the previous destination's label can be missing and the new one drawn twice until you pan or zoom. A one-line `STATE.render.cacheValid = false;` in `handleAirportSelect()` would fix it. It was not in this build's spec.
+
 ## Build Queue
 
 Fully specified work that is waiting for a go-ahead. Items leave this list in the same commit that builds them.
 
-### 1. Remember the destination airport between launches
-**Not yet authorized to build.** Items marked *(proposed)* are my defaults and still need Jon's OK.
-
-Reported by Jon: the destination airport he selected gets lost after he moves to another app for a while, and it used to stay for days.
-
-- Cause: the destination only lives in memory. `STATE.target` starts as KMCO on every launch (`js/state.js`), `handleAirportSelect()` (`js/controls.js`) changes it, and nothing saves it. The original single-file app never saved it either, so it could only last as long as the page stayed loaded. When Android reloads or discards a page you left in the background (Jon had 72 tabs open in his screenshot), it comes back as MCO. *(To confirm with Jon: does the radar loading screen show when he returns? If it does, the page was reloaded.)*
-- Storage: browser `localStorage`, key `stratosphere.destination`, holding the airport's `name` string (for example `KMCO (Orlando, FL)`). Every read and write inside `try/catch`, same as the home location.
-- Save: in `handleAirportSelect()` right after `STATE.target = ap`.
-- Restore: a new `loadDestination()` in `js/controls.js`, run on `DOMContentLoaded` (registered after `populateAirports`, so the dropdown already exists). It finds the dropdown option whose airport name matches the saved name; if found, it sets the dropdown to it and sets `STATE.target` to that airport. It does not call `handleAirportSelect()`, which also sets the plane speed to 460 and resets the runway lock, neither of which should happen at launch. It sets `STATE.render.cacheValid = false` before `draw()`, for the same reason as the home-location fix (the cached map layer skips drawing the destination's label). A missing, unreadable, or no-longer-listed saved name leaves the default (KMCO).
-- Not included *(proposed)*: no other settings are saved (day/night mode, map layers, speed unit); the way selecting a destination works does not change.
-- Test plan, phone-sized: pick a different destination, reload, and confirm the dropdown, "EN ROUTE TO" and the map marker show it; confirm the plane speed is not set to 460 on restore; a saved name that is not in the list, a corrupt value, and blocked storage all fall back to KMCO with no errors; a fresh profile still starts on KMCO; with the Airports layer on, the restored destination is drawn once, not twice; rerun the earlier suites (home location, button, fonts, offline cache, installable app); after the push, repeat on the live site, including an offline reload.
-- Ships as: v73.
+_Empty — nothing queued right now._
 
 ## Build Planner
 
