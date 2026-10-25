@@ -183,23 +183,27 @@ Built as spec'd in the Build Queue (found while testing Build Log 11; it came fr
 - The v64, v65, v66, v67 and v70 test suites were rerun against this build: all pass (including Chrome's installability check, which an earlier run had tripped over this bug).
 - Not tested: a real phone.
 
+### Build Log 13 (completed): v72, fix the airport popup close button
+Built as spec'd in the Build Queue. Reported by Jon from a real phone: the close × sat in the middle of the popup's title row, on top of "(Orlando, FL)", instead of in the corner. Jon also asked for a bigger tap area.
+- [x] `index.html`, the close button in the airport popup header: inline style changed from `top: 6px; right: 8px; ... padding: 0 4px;` to `top: 0; right: 0; width: 48px; height: 100%; ... padding: 0;`. Everything else in the style is unchanged. That is the only changed line.
+- [x] Cause (reproduced first): the global `select, input, button { width: 100%; ... }` rule in `css/styles.css` stretched this button into a 377 px strip across the whole header (the old version measured 377 px wide), with the × glyph centered in the middle of it, and made a tap anywhere on the title row close the popup. The inline `width` now overrides that rule.
+- [x] Result: the button is 48 px wide and fills the header above its 1 px bottom border (35.6 px tall, so about 48 by 36 px of tap area, up from about 26 by 22 px for the glyph alone); the × sits 24 px from the right edge (about 18 px before).
+- [x] Left out, as spec'd: the header's size, padding and look are unchanged (its height is 36.59 px before and after); the title's right padding (40 px) was not touched; no other button and the global `button` style were not touched.
+
+**Verification:** headless Chromium emulating a phone (412x915, 2.25 pixel ratio, touch), the previous version (v71) against the new one.
+- `git diff` shows exactly one changed line.
+- The button's right edge equals the header's right edge; it is 48 px wide and 35.6 px tall (the header's inner height); the header height is unchanged; the glyph is 24 px from the right edge. The old version's button measured 377 px wide, which reproduces the bug.
+- Tapping the middle of the title no longer closes the popup; tapping the × closes it; tapping 40 px from the right edge (inside the bigger area) closes it; tapping outside on the dark overlay still closes it.
+- The longest airport name in the list ("HDN - Yampa Valley (Hayden/Steamboat Springs, CO)") ends at 343.9 px and the glyph starts at about 363.5 px, so they never touch.
+- The popup still draws its runways. Screenshots checked by eye: before and after.
+- The v64, v65, v66, v67, v70 and v71 test suites were rerun: all pass.
+- Not tested: a real phone.
+
 ## Build Queue
 
 Fully specified work that is waiting for a go-ahead. Items leave this list in the same commit that builds them.
 
-### 1. Fix the airport popup close button (move it to the corner, bigger tap area)
-**Not yet authorized to build.**
-
-Reported by Jon from a real phone: the close × sits in the middle of the popup's title row, on top of "(Orlando, FL)", instead of in the top-right corner. Jon asked for a bigger tap area too.
-
-- Cause (reproduced in a phone-sized browser): a global style, `select, input, button { width: 100%; ... }` in `css/styles.css`, stretches every button to full width. The popup's close button has `position: absolute; right: 8px` inline but no width, so it becomes a 377 px strip across the whole header and its × glyph is centered in the middle of it. It also means a tap anywhere on the title row closes the popup today.
-- Where: `index.html`, the close button inside `#airport-popup-panel`'s header (the one that calls `closeAirportPopup()`).
-- What: in that button's inline style, change `top: 6px; right: 8px;` to `top: 0; right: 0; width: 48px; height: 100%;` and change `padding: 0 4px;` to `padding: 0;`. Everything else in the style (`position: absolute`, `background: none`, `border: none`, `font-size: 22px`, `color`, `cursor`, `line-height: 1`) stays. The inline `width` overrides the global 100%, and the button text centers itself in the 48 px strip, so the × sits about 24 px from the right edge (about 18 px before) and the tap area becomes 48 px wide by the full header height (about 37 px), up from about 26 by 22 px for the glyph alone.
-- Not included: the header's size, padding and look do not change; the title's existing right padding (40 px) keeps the text clear of the × glyph; no other button is touched; tapping outside the popup (the dark overlay) still closes it, as today. The global `button` style is not changed.
-- Test plan, phone-sized (412x915, 2.25 pixel ratio): the button's right edge equals the header's right edge, it is 48 px wide and as tall as the header, and the header's height is unchanged; the × glyph is within 30 px of the right edge; tapping the middle of the title no longer closes the popup; tapping the × and tapping 40 px from the right edge both close it; the glyph never overlaps the title text, checked with the longest airport name in the list; the popup still draws its runways; screenshot checked by eye; rerun the earlier test suites; after the push, repeat the check on the live GitHub Pages site.
-- Ships as: v72.
-
-### 2. Remember the destination airport between launches
+### 1. Remember the destination airport between launches
 **Not yet authorized to build.** Items marked *(proposed)* are my defaults and still need Jon's OK.
 
 Reported by Jon: the destination airport he selected gets lost after he moves to another app for a while, and it used to stay for days.
