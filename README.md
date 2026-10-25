@@ -229,7 +229,7 @@ Built as spec'd in the Build Queue (found while testing Build Log 14; the same k
 - After the fix: 0 mismatches after each of the 3 picks in a row. A before and after screenshot shows the MCO label back near Orlando and DEN drawn once.
 - Airports layer off: picking a destination works as before (DEN and KDEN), no errors.
 - The v64, v65, v66, v67, v70, v71, v72 and v73 test suites were rerun: all pass. (The popup test had two outdated assertions of its own: a strict height check and a check that the old version still had the bug; both were corrected in the test.)
-- Not tested: a real phone. The live site is checked once at the end of this group of builds (see the last Build Log in the group).
+- Not tested: a real phone. The live site was checked once at the end of this group of builds (see Build Log 20).
 
 ### Build Log 16 (completed): v75, stop Chrome restoring the destination dropdown on its own
 Built as spec'd in the Build Queue. Reported by Jon from a real phone: the Flight Info showed MCO while the Settings dropdown showed BNA, and changing to another airport and back to BNA worked (the Flight Info then showed BNA, which Jon confirmed).
@@ -243,6 +243,7 @@ Built as spec'd in the Build Queue. Reported by Jon from a real phone: the Fligh
 - With the attribute: in the same test the dropdown, the Flight Info and the target all show MCO (in step). With a saved BNA, all three show BNA. A normal reload also keeps them in step in both cases. Zero JS errors.
 - `git diff` shows exactly one changed line.
 - The v64 to v74 test suites were rerun: all pass.
+- Live site: checked together with the rest of v74 to v79 (see Build Log 20).
 - Not tested: a real phone.
 
 ### Build Log 17 (completed): v76, altitude diagnostic readout (raw readings in Settings)
@@ -258,6 +259,7 @@ Built as spec'd in the Build Queue. Jon's altitude reports: the readout swings b
 - The readout has the header plus exactly 12 reading lines, newest first (35,010 ft on top, 34,900 ft at the bottom); every line matches the format; a missing accuracy shows `±-- m`, a missing speed shows `-- kt`, and a fix with no altitude shows `no altitude`. The log is capped at 30 entries.
 - In the Settings drawer at phone size the readout fits the width (no sideways scrolling) and reads clearly in a screenshot. Zero JS errors in both versions.
 - The v64 to v75 test suites were rerun: all pass.
+- Live site: checked together with the rest of v74 to v79 (see Build Log 20).
 - Not tested: a real phone, and real in-flight readings (that is the point of the next flight).
 
 ### Build Log 18 (completed): v77, altitude: require 3 consistent readings before the shown value changes
@@ -278,6 +280,7 @@ Built as spec'd in the Build Queue, built after the diagnostic readout (Build Lo
 - Climbs: 3,000 ft/min (150 ft per fix) and 6,000 ft/min (300 ft per fix) are followed; a 6,400 ft/min climb (320 ft per fix, beyond the limit) is held, as expected.
 - A genuine step to a new level is shown after 3 readings at that level (held until then). Fixes with no altitude are skipped. Readings older than 60 s are not counted: after a 70 s gap the screen shows `--` and 3 new readings are needed. With no new fixes, the screen shows `--` 61 s after the last accepted update.
 - Zero JS errors in both versions. The v64 to v76 test suites were rerun: all pass. (Two of my own tests were tightened along the way: the destination suite's speed check now reads the speed in the same instant as the pick, because a mocked GPS fix could occasionally reset it first, and the diagnostics suite no longer asserts the old calculation.)
+- Live site: checked together with the rest of v74 to v79 (see Build Log 20).
 - Not tested: a real phone, and real in-flight altitude readings.
 
 ### Build Log 19 (completed): v78, replace the destination runway glyph with a 📍 and remove its orientation code
@@ -293,6 +296,7 @@ Built as spec'd in the Build Queue. Jon: the destination's black "≡---" runway
 - Track-Up with the map rotated 45 degrees (plane placed about 100 NM away so the plane icon does not cover the pin): the pin stays upright and its tip is on the airport (dx -0.1, dy -0.6).
 - Picking Denver moves the pin there (tip within 0.5 px). Tapping the 3-letter code text still opens the airport popup. The pin sits cleanly beside the label in screenshots at zoom 9 and at the normal view with the Airports layer on.
 - Zero JS errors. The v64 to v77 test suites were rerun: all pass (the destination suite's assertion about `STATE.runwayLocked` was removed from the test because that state no longer exists; the offline cache suite failed one check once under heavy machine load and passed 4 of 4 reruns).
+- Live site: checked together with the rest of v74 to v79 (see Build Log 20).
 - Not tested: a real phone, and how the pin looks in Apple's emoji font (the glyph is measured at run time, so the tip placement should hold).
 - Observed, unchanged: tapping the pin at its horizontal centre, just above the tip, also opens the popup, because the code text's tap area starts 2 px left of the airport and reaches up 31 px. That area was not changed.
 
@@ -307,7 +311,7 @@ Built as spec'd in the Build Queue. Jon expected the approach and landing screen
 - Opens or not by distance, v78 against this build: 3.0 NM no and no; 2.5 NM no and no; 2.1 NM no and no; 1.9 NM no and yes; 1.5 NM no and yes; 0.9 NM yes and yes; 0.5 NM yes and yes. So v78 reproduces the 1 NM behavior, and the new version opens only within 2 NM.
 - Closing the popup at 1.5 NM records the dismissal for that destination, and it does not reopen by itself (also not at 1.9 NM). After 10 minutes it is still dismissed; after 21 minutes it re-arms and opens again. Moving beyond 9 NM clears the dismissal, and it opens again at 1.9 NM. Picking a different destination is not blocked by the old dismissal. Manually tapping the destination's code text still opens the popup from 30 NM away. Zero JS errors.
 - The v64 to v78 test suites, and the altitude and pin tests, were rerun: all pass (the pin test's "black glyph is gone" comparison is only meaningful against a version that still has the glyph, so it no longer applies now that the previous version is already glyph-free).
-- Live GitHub Pages site: the whole group of builds (v74 to v79) is checked together once after this push; the result is recorded below.
+- Live GitHub Pages site (checked after the deploy of v79, headless Chromium at 412x915, no real GPS, synthetic fixes), covering the whole group v74 to v79: after picking a destination with the Airports layer on, the cached map layer matches a full rebuild (v74); with nothing saved and a history-style restore, the dropdown and the Flight Info agree (v75); the Settings altitude readout shows the raw readings (v76); a 7,000 ft spike never reaches the screen and the value appears only after 3 consistent readings (v77); the 📍 tip is 0.3 px and 0.5 px from the airport and no black glyph is drawn (v78); the approach screen does not open at 2.1 NM, opens at 1.9 NM, and does not pop back open after being closed at 1.9 NM (v79); zero JS errors; and an offline reload still loads the app from the cache.
 - Not tested: a real approach on a real phone.
 
 ## Build Queue
