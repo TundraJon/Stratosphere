@@ -150,26 +150,27 @@ Built as spec'd in the Build Queue. Jon's reason: Wyoming typically goes straigh
 - The page loads, the map is ready and there are zero JS errors, in both versions.
 - Not checked: how the new Wyoming colors look on screen (only the season picker's output was tested).
 
+### Build Log 11 (completed): v70, installable app (manifest, icons and favicon)
+Built as spec'd in the Build Queue. Jon chose the icon (his globe image) and said "your defaults" for the rest, and asked for the favicon to be folded into this build. Android and iPhone.
+- [x] New `icons/` folder: `icon-192.png` and `icon-512.png` (Android, transparent, globe at 94%), `icon-maskable-512.png` (Android adaptive, opaque, globe at 70% inside the safe circle on a deep-navy gradient with a soft shadow) and `apple-touch-icon-180.png` (iPhone, opaque, globe at 76%). Made from Jon's globe image (503x543 JPEG, globe 386 px across): the fake checkerboard was removed with a flood fill from the image edge, and the edge was replaced with a smooth anti-aliased circle (center 247, 292.5, radius 190.5, measured edge radius 192 +/- 1.5).
+- [x] New `favicon.ico` in the repo root with 16, 32 and 48 px images, scaled from the cropped transparent globe (not from the small pixelated JPEG Jon sent), transparent corners.
+- [x] New `manifest.webmanifest` in the repo root: `name` and `short_name` "Stratosphere", `description` "Track your in-flight status", `start_url` and `scope` `./`, `display` `standalone`, `background_color` and `theme_color` `#0d0e12`, and the three Android icons. No `orientation` entry, so rotation behaves as in the browser today.
+- [x] `index.html` `<head>`: six added lines (the manifest link, `theme-color`, the favicon link, `apple-touch-icon`, `apple-mobile-web-app-capable` and `apple-mobile-web-app-title`). Nothing else in the file changed, and the script order is untouched.
+- [x] Left out, as spec'd: no orientation lock; no day/night theme color; no in-app Install button; no iOS splash screens; no 1024 px App Store icon (the source image is too small for a sharp one); no app code changes.
+- [x] **Existing problem found during testing, not fixed here (it comes from the file split in Build Log 2, not from this build):** some scripts run functions or read variables that are defined in a later script (for example `lastGpsFix` is declared in `js/controls.js`, the last script, but used by `js/live-layer.js`, `js/telemetry.js` and others). In the old single-file app that could never happen, but now an event such as a window `resize` that fires while the scripts are still loading can run a function before its dependencies exist. The page then logs `lastGpsFix is not defined` or `draw is not defined`, and in the worst case the loading screen never finishes. Measured: the original single file had 0 errors in 5 loads with resize events forced during loading; the split app had errors in 3 of 14 loads (v69) and 2 of 14 loads (this build), so this build does not change the rate; with resize events forced every 2 ms during loading, 1 of 8 loads never finished starting; in plain loads with no forcing there were 0 errors in 30 loads (v69) and 1 in 30 (this build). The service worker (Build Log 8) makes scripts load faster, which should make the window smaller, but it does not remove it.
+
+**Verification:** headless Chromium at Pixel 7 size (412x915) against a local server.
+- `manifest.webmanifest` is valid JSON. The manifest, all four PNGs and `favicon.ico` return 200 with the right content type. Each PNG has the size the manifest claims. The 192 and 512 icons have transparent corners; the maskable and Apple icons are fully opaque. `favicon.ico` holds exactly 16, 32 and 48 px images with transparent corners.
+- Chrome's own installability check (`Page.getInstallabilityErrors`) reports no errors in a normal browser profile, and `Page.getAppManifest` parses the manifest with no errors or warnings. (In Playwright's default incognito-style context the check reports only `in-incognito`, which is a property of that test context, not of the app.)
+- The page has all six new head tags with the right values, loads, and the browser now gets a 200 for `favicon.ico` instead of a 404.
+- The v64, v65, v66 and v67 test suites were rerun against this build: all pass (one run of the v65 button suite had a single failure that did not repeat in six further runs; the startup problem above is the likely cause).
+- Not tested: installing on a real phone, how the icon looks on a real home screen, or iPhone at all (no iPhone available).
+
 ## Build Queue
 
 Fully specified work that is waiting for a go-ahead. Items leave this list in the same commit that builds them.
 
-### 1. Installable app (manifest and icons)
-**Not yet authorized to build.**
-
-Promoted from the Build Planner (installable app). Jon chose the icon (his globe image, with the fake transparency removed and the edge cleaned up) and said "your defaults" for everything else. Android and iPhone. Jon also asked for a browser-tab favicon from the same artwork and chose to fold it into this item (one build, one `<head>` edit).
-
-- Icon files, new `icons/` folder, made from Jon's globe image (503x543 JPEG; the globe itself is 386 px across). The globe is cut out with a truly transparent background and a smooth circular edge (fitted circle: center 247, 292.5 and radius 190.5 in the source image).
-  - `icons/icon-192.png` and `icons/icon-512.png`: Android, transparent, globe at 94% of the canvas.
-  - `icons/icon-maskable-512.png`: Android adaptive icon, opaque, globe at 70% of the canvas (inside the 80% safe circle) on a deep-navy radial gradient (center `#17407a`, edge `#050b1c`) with a soft shadow under the globe.
-  - `icons/apple-touch-icon-180.png`: iPhone, opaque (iOS shows transparency as black), same backdrop, globe at 76%. iOS rounds the corners itself.
-- Favicon: one `favicon.ico` in the repo root with 16, 32 and 48 px versions, each scaled from the cropped transparent globe (not from the small, pixelated JPEG Jon sent, which is 273x271 with a white square and ring baked in). Transparent corners. At 16 px the plane and state lines blur into a blue globe with a pale patch; that is expected for a favicon.
-- New `manifest.webmanifest` in the repo root: `name` and `short_name` both "Stratosphere"; `description` "Track your in-flight status"; `start_url` and `scope` `./`; `display` `standalone`; `background_color` and `theme_color` both `#0d0e12` (the night-mode page background); `icons`: the 192 and 512 files as `any` and the maskable 512 as `maskable`. No `orientation` entry *(my default)*, so rotation behaves as it does in the browser today.
-- `index.html` `<head>`: add `<link rel="manifest" href="manifest.webmanifest">`, `<meta name="theme-color" content="#0d0e12">`, `<link rel="apple-touch-icon" href="icons/apple-touch-icon-180.png">`, `<meta name="apple-mobile-web-app-capable" content="yes">` and `<meta name="apple-mobile-web-app-title" content="Stratosphere">`, and `<link rel="icon" href="favicon.ico" sizes="any">`. Nothing else in the file changes. No iOS status-bar-style tag *(my default)*, so iOS keeps its normal status bar.
-- Not included: no orientation lock; no theme color that changes with day or night mode; no in-app "Install" button; no iOS splash screens; no 1024 px App Store icon (the source image is too small for a sharp one); no app code changes.
-- Source files: the icon PNGs and `favicon.ico` were made in this session's scratch folder, which does not survive the session. If this is built in a later session, Jon re-supplies the five PNGs (he downloaded them) or the original globe image, and everything is rebuilt with the recipe above.
-- Test plan, at Pixel 7 size (412x915) against a local server: `manifest.webmanifest` is valid JSON and every icon path in it returns 200 with the right type; each PNG has the size it claims; `favicon.ico` holds exactly the 16, 32 and 48 px images with transparent corners and the page requests it with a 200; the maskable and Apple icons are fully opaque and the 192/512 icons have transparent corners; Chrome's own installability check (DevTools protocol `Page.getInstallabilityErrors`) reports no errors and `Page.getAppManifest` parses the manifest with no warnings; the page loads with zero JS errors and the existing offline cache, home-location, fonts and button suites still pass. After the push, repeat the installability check on the live GitHub Pages site and confirm the icons load there. Jon then tries "Install app" from Chrome's menu on his phone.
-- Ships as: v70.
+_Empty — nothing queued right now._
 
 ## Build Planner
 
