@@ -364,113 +364,27 @@ Built as spec'd in the Build Queue (item 1), after Jon asked to "build all".
 - The v64 to v81 suites were rerun: all pass (the version buster suite with its numbers shifted to 82). The auto-open (v79) test has one failing check about the OLD comparison folder in my scratch area, which is now a newer copy and no longer shows the old 1 NM behavior; the checks on the current build all pass.
 - Not tested: a real phone and a real flight, and battery or frame-time savings on a device (the redraw count is the measure used here).
 
+### Build Log 24 (completed): v83, "look out the window" landmark callouts (with the Grand Canyon)
+Built as spec'd in the Build Queue (item 2, including the Grand Canyon and the 140 MPH floor), after Jon asked to "build all".
+- [x] `js/state.js`: every landmark now has `view` (`'always'`, `'day'` or `'none'`) and, unless `'none'`, a `size` (`'huge'`, `'large'`, `'medium'`, `'small'`). Sorted as agreed: 4 Visible (Las Vegas Strip, Disney World, Kilauea, Gateway Arch), 16 Daytime (the 15 listed in the spec plus the Grand Canyon), 23 Not visible. New 43rd entry "Grand Canyon" (🏜️, 36.4003, -112.5095, the middle of the drawn line by length; `view: 'day'`, `size: 'huge'`, `line: true`); it shows on the map with the Landmarks layer on like the others.
+- [x] New file `js/callouts.js` (loaded after `controls.js`, so the page now has 25 file references, all `?v=83`): checks all landmarks once a second. A landmark fires when it is within its size's distance (huge 80, large 50, medium 25, small 10 NM), is not behind the plane (within 90° of the heading), is in daylight for `'day'` ones (sun above 6° below the horizon, from `getSubsolarPoint()`), the plane is going faster than 140 MPH, no cutscene is playing, and it has not already fired. Each landmark fires once and re-arms beyond 1.25 times its distance. The Grand Canyon uses the distance to the nearest point on `GRAND_CANYON_PATH` (to the nearest spot on each segment), and the side and the "behind" test use that point.
+- [x] The banner: a pill under the Flight Info drawer with the emoji, name, distance and side ("🚲 Mackinac Island, 30 NM ahead, on your left"; "straight ahead" within 15° of the heading). Its distance keeps updating, it stays 8 s, fades over 0.5 s, and a tap dismisses it. One at a time, others wait nearest-first and are dropped if no longer valid. It sits clear of the compass and Reset button (side margins of 56 px; long names wrap to two lines).
+- [x] `index.html` and `css/styles.css`: the banner element and its style, a script tag for `js/callouts.js`, and a "Landmark callouts" button in Settings under Map Layers (on by default, saved between launches in `localStorage`, independent of the Landmarks layer).
+- [x] Left out, as spec'd: how other landmarks are drawn, the map layers, render cache, airport popup, cutscenes, GPS handling and altitude readout. The brown Grand Canyon path still draws as before. Rivers and city glow stay in the Planner.
+- [x] Not in the spec, small: the banner's text uses `text-wrap: balance` so a two-line wrap is not a single orphan word.
+
+**Verification:** headless Chromium at 412x915, no GPS (synthetic fixes), fake date and clock offset, the 1-second timer stopped so each check is run by hand.
+- 50 checks pass. Data: 43 landmarks, all with a valid class and size, counts 4 / 16 / 23. Ranges: each size fires 1 NM inside its distance and stays silent 1 NM outside (Rainier, Crater Lake, Niagara Falls, Golden Gate). Wording: left, right and straight ahead; 95° off the nose is ignored, 89° counts. Night: Daytime ones silent, Visible ones fire, Not visible never fires even 0.5 NM away (day or night); twilight edge (sun 3° below the horizon counts, 9° does not). Speed: 130 and exactly 140 MPH silent, 150 fires. Cutscene: silent while one plays, fires once it ends. Once only; not re-armed at 1.19 times the range, re-armed beyond 1.25 times, then fires again. Two landmarks at once: nearest first, the other next after the 8 s + 0.5 s fade; tap dismisses; the distance updates live.
+- Grand Canyon: fires from 75 NM beyond the east end of the line even though the icon is farther than 80 NM away, with the nearest-point distance in the text; silent from 85 NM beyond the end; fires from 60 NM south of the middle; silent at night; the nearest-point math matches a brute-force search within 0.05 NM.
+- Setting: on by default, off stops the callouts and is saved, survives a reload, back on is saved; independent of the Landmarks layer. Screenshots at 412x915 with the Flight Info drawer open and collapsed: the banner overlaps neither the drawer, the compass nor the Reset button.
+- The earlier suites were rerun: all pass (the version buster suite shifted to 83, the version check now expects 25 references). Zero JS errors. The auto-open (v79) test still has the one failing check about my stale scratch comparison folder, not the product.
+- Not tested: a real phone and a real flight, so whether the distances (80 / 50 / 25 / 10 NM) and the 140 MPH floor feel right is for Jon's next flight. Atmospheric haze and clouds are not considered.
+
 ## Build Queue
 
 Fully specified work that is waiting for a go-ahead. Items leave this list in the same commit that builds them.
 
-### 1. "Look out the window" landmark callouts
-**Not yet authorized to build.** Ships as the next free version number when
-it is built (v83 if it follows item 1, v82 if it goes first); every `?v=`
-number in `index.html` changes to it.
-
-What Jon wants: a small banner when the plane gets near a landmark that
-could actually be seen from the window, saying how far ahead it is and which
-side, for example "🗻 Mount Rainier, 55 NM ahead, on your left". Landmarks
-only for now, plus the Grand Canyon (below); not rivers or city glow, see
-the Planner. Size decides how far away it can be seen, and a hand-picked class
-decides whether it can be seen at night.
-
-**Data (`js/state.js`, the 42 entries of `STATE.landmarks`, plus the new
-Grand Canyon entry, 43 in all).** Each landmark gets two new fields: `view` (`'always'`, `'day'` or `'none'`) and, unless
-it is `'none'`, `size` (`'huge'`, `'large'`, `'medium'` or `'small'`).
-- Visible day and night (`'always'`): Las Vegas Strip (large), Disney World
-  (large), Kilauea Volcano (huge), Gateway Arch (medium).
-- Visible in daytime only (`'day'`): Denali, Mount Rainier, Mount Shasta,
-  Great Smoky Mountains (all huge); Crater Lake, Kennedy Space Center,
-  Mackinac Island (large); Niagara Falls, Zion, Pearl Harbor Memorial,
-  Indianapolis Motor Speedway, Epic Systems HQ (medium); Golden Gate Bridge,
-  El Capitan, Colonial Williamsburg (small).
-- Not visible (`'none'`, never called out): the other 23: Arlington
-  National Cemetery, Dollywood, The White House, Space Needle, Statue of
-  Liberty, Mount Rushmore, Hollywood Sign, Old Faithful, Mall of America,
-  French Quarter, Willis Tower, Liberty Bell, Graceland, Wright Brothers
-  Memorial, Fenway Park, Multnomah Falls, Carlsbad Caverns, Superman Statue,
-  Georgia Aquarium, Field of Dreams, Mammoth Cave, Rock & Roll Hall of Fame,
-  The Alamo. (The Grand Canyon is the 43rd: daytime only, huge, see below.)
-  Rule used: when unsure, Not visible (a missed callout costs
-  little, a wrong one looks silly). Promoting one later is a one-field
-  change after Jon checks it from a window.
-- Distance by size: huge 80 NM, large 50 NM, medium 25 NM, small 10 NM
-  (constants at the top of the new code). The class is by hand, never from
-  the phone's altitude (unreliable, see Build Log 17).
-
-**When a callout fires** (checked about once a second over all 42 landmarks,
-using `getDistance` and `getBearing` from `js/geodesy.js`):
-- the class is not `'none'` and the plane is within that size's distance;
-- the landmark is not behind the plane (bearing within 90° of the heading);
-- it is daytime at the landmark, for `'day'` ones: the sun is above 6° below
-  the horizon (twilight counts as day). The sun position comes from
-  `getSubsolarPoint()` in `js/terminator.js`; elevation is 90° minus the
-  angular distance from the subsolar point. `'always'` ones skip this test;
-- the plane is moving faster than 140 MPH (so taxiing, the takeoff roll and
-  the low, slow part of a departure or approach stay quiet);
-- it has not already been called out. Each landmark fires once, and re-arms
-  once the plane is farther than 1.25 times that distance away.
-
-**The Grand Canyon (Jon: this is happening now, so it ships in this build).**
-- A new landmark entry "Grand Canyon" with `view: 'day'`, `size: 'huge'`
-  (80 NM), a 🏜️ emoji (my default, Jon can change it), and its map location
-  at the middle of the drawn canyon line: halfway along the line's length,
-  which works out to about 36.4003, -112.5095. The icon and name appear with
-  the Landmarks layer on, like the other landmarks.
-- It is a line, not a point, so its callout is measured differently: the
-  distance is to the nearest point anywhere along `GRAND_CANYON_PATH` (the
-  57-point line, Lees Ferry to Grand Wash Cliffs, about 210 NM), measured to
-  the nearest spot on each segment and not only the corner points. The
-  callout fires when the plane first gets within 80 NM of any part of the
-  canyon, and the distance, the "behind the plane" test and the left/right
-  wording all use that nearest point. Everything else about it (daytime test,
-  140 MPH floor, once per flight and the 1.25x re-arm, the banner) is the same
-  as the other landmarks. It is flagged in the data with `line: true`; the
-  code reads the points from `GRAND_CANYON_PATH`, which loads after
-  `js/state.js`, so it is looked up when the check runs, not when the
-  landmark list is built (the script load order does not change).
-- The existing brown path drawing is not touched.
-
-**The banner.** A small pill at the top of the map, just below the Flight
-Info drawer: the landmark's emoji, its name, then "N NM ahead, on your left"
-(or "on your right", or "straight ahead" within 15° of the heading). The
-distance keeps updating while it shows. It stays 8 seconds, fades out over
-0.5 s, and a tap dismisses it. One at a time; others wait in line, nearest
-first, and any that are no longer in range or are behind the plane by then
-are dropped. It does not take taps away from the map (only the pill itself
-is tappable). It is not shown while a takeoff or landing cutscene is playing.
-
-**Setting.** A "Landmark callouts" on/off button in Settings (default on),
-remembered between launches the same way the destination is
-(`localStorage`). It is separate from the Landmarks map layer: callouts work
-whether or not the landmark icons are shown.
-
-**Left alone:** how the other landmarks are drawn on the map, the map layers,
-the render cache, the airport popup, the cutscenes, GPS handling and the
-altitude readout. The brown Grand Canyon path keeps drawing as it does now.
-Rivers and city glow are separate Planner ideas, not part of this build.
-
-**Test plan:** headless Chromium at 412x915 (Pixel 7 size), synthetic GPS,
-fake clock and fake date. Check: each size fires at its own distance and not
-just outside it; the left/right/ahead wording from the bearing; `'day'`
-landmarks fire at noon and stay silent at midnight, with the twilight edge;
-`'always'` fire both; `'none'` never; nothing fires behind the plane, below
-140 MPH or during a cutscene; once per landmark and the 1.25x re-arm;
-queueing order; the banner timing (8 s, 0.5 s fade) and tap-to-dismiss; the
-setting turns it off and survives a reload; the Landmarks layer toggle does
-not affect it; a screenshot of the banner; then the full earlier suites, the
-version check and the live site. For the Grand Canyon: its icon sits at the
-line's midpoint; the callout fires at 80 NM from the nearest point of the
-line, including when the plane is abeam of the middle or ahead of either end
-and not just near the icon; the side and distance follow that nearest point;
-it is silent at night. Also confirm all 43 landmarks have a valid class (and
-a size unless `'none'`).
+_Empty — nothing queued right now._
 
 ## Build Planner
 

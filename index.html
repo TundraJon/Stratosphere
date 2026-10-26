@@ -4,13 +4,13 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Stratosphere - Mobile Flight Tracker</title>
-    <link rel="manifest" href="manifest.webmanifest?v=82">
+    <link rel="manifest" href="manifest.webmanifest?v=83">
     <meta name="theme-color" content="#0d0e12">
-    <link rel="icon" href="favicon.ico?v=82" sizes="any">
-    <link rel="apple-touch-icon" href="icons/apple-touch-icon-180.png?v=82">
+    <link rel="icon" href="favicon.ico?v=83" sizes="any">
+    <link rel="apple-touch-icon" href="icons/apple-touch-icon-180.png?v=83">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-title" content="Stratosphere">
-    <link rel="stylesheet" href="css/styles.css?v=82">
+    <link rel="stylesheet" href="css/styles.css?v=83">
 
 </head>
 <body>
@@ -27,8 +27,8 @@
     </div>
 </div>
 
-<script src="js/early-gps.js?v=82"></script>
-<script src="js/loader.js?v=82"></script>
+<script src="js/early-gps.js?v=83"></script>
+<script src="js/loader.js?v=83"></script>
 
 <div id="app-container">
     <canvas id="map-canvas"></canvas>
@@ -124,6 +124,9 @@
                     <button id="btn-toggle-terminator" class="btn" onclick="toggleTerminator()">🌓 Terminator</button>
                     <button id="btn-toggle-seasonal" class="btn" onclick="toggleSeasonalColors()">🍂 Seasonal</button>
                 </div>
+                <div class="toggle-row" style="grid-template-columns: 1fr; margin-top: 8px;">
+                    <button id="btn-toggle-callouts" class="btn active" onclick="toggleCallouts()">Landmark callouts</button>
+                </div>
             </div>
 
             <div class="input-group" style="margin-top: 8px;">
@@ -181,6 +184,9 @@
         </div>
     </div>
 
+    <!-- LANDMARK CALLOUT BANNER (see js/callouts.js) -->
+    <div id="landmark-callout" onclick="dismissCallout()"></div>
+
     <!-- TAKEOFF / LANDING CUTSCENE CARD -->
     <!-- Covers the bottom half of the screen (including the Settings drawer
          area) while a cutscene plays. Built and torn down by playCutscene()
@@ -207,23 +213,24 @@
     </div>
 </div>
 
-<script src="js/drawers.js?v=82"></script>
-<script src="js/state.js?v=82"></script>
-<script src="js/data/map-data.js?v=82"></script>
-<script src="js/data/airport-data.js?v=82"></script>
-<script src="js/airports.js?v=82"></script>
-<script src="js/projection.js?v=82"></script>
-<script src="js/canvas.js?v=82"></script>
-<script src="js/seasonal.js?v=82"></script>
-<script src="js/touch.js?v=82"></script>
-<script src="js/airport-popup.js?v=82"></script>
-<script src="js/geodesy.js?v=82"></script>
-<script src="js/render-loop.js?v=82"></script>
-<script src="js/terminator.js?v=82"></script>
-<script src="js/live-layer.js?v=82"></script>
-<script src="js/telemetry.js?v=82"></script>
-<script src="js/cutscene.js?v=82"></script>
-<script src="js/controls.js?v=82"></script>
-<script src="js/register-sw.js?v=82"></script>
+<script src="js/drawers.js?v=83"></script>
+<script src="js/state.js?v=83"></script>
+<script src="js/data/map-data.js?v=83"></script>
+<script src="js/data/airport-data.js?v=83"></script>
+<script src="js/airports.js?v=83"></script>
+<script src="js/projection.js?v=83"></script>
+<script src="js/canvas.js?v=83"></script>
+<script src="js/seasonal.js?v=83"></script>
+<script src="js/touch.js?v=83"></script>
+<script src="js/airport-popup.js?v=83"></script>
+<script src="js/geodesy.js?v=83"></script>
+<script src="js/render-loop.js?v=83"></script>
+<script src="js/terminator.js?v=83"></script>
+<script src="js/live-layer.js?v=83"></script>
+<script src="js/telemetry.js?v=83"></script>
+<script src="js/cutscene.js?v=83"></script>
+<script src="js/controls.js?v=83"></script>
+<script src="js/callouts.js?v=83"></script>
+<script src="js/register-sw.js?v=83"></script>
 </body>
 </html>
