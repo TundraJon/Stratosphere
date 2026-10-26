@@ -380,48 +380,26 @@ Built as spec'd in the Build Queue (item 2, including the Grand Canyon and the 1
 - The earlier suites were rerun: all pass (the version buster suite shifted to 83, the version check now expects 25 references). Zero JS errors. The auto-open (v79) test still has the one failing check about my stale scratch comparison folder, not the product.
 - Not tested: a real phone and a real flight, so whether the distances (80 / 50 / 25 / 10 NM) and the 140 MPH floor feel right is for Jon's next flight. Atmospheric haze and clouds are not considered.
 
+### Build Log 25 (completed): v84, no map snapshot or cache while a finger is on the screen, and wait 1 second instead of 200 ms
+Built as spec'd in the Build Queue (item 1), with Jon's answer to the open question: the North-Up cache gets the same rule.
+- [x] `js/live-layer.js`: a small touch tracker with passive, document-level listeners (`touchstart`, `touchend`, `touchcancel`, `mousedown`, `mouseup`, and window `blur` as a safety release) sets `STATE.render.touching` while any finger (or a held mouse button) is on the screen and records `touchReleasedAt` when the last one lifts. The existing pan, pinch and tap handling is untouched.
+- [x] Track-Up: the sliding snapshot is never taken while `touching`, and only once everything the signature watches has held still for 1 second counted from the later of the last change and the last finger lifting (`TRACKUP_SLIDE_SETTLE_MS` 200 to 1000). While a finger is down, or during that second, the map is drawn live, as before.
+- [x] North-Up: the cache is not used while `touching`, and only once the view has held still for 1 second counted the same way (new `NORTHUP_CACHE_SETTLE_MS = 1000`, replacing the fixed 200 ms). Until then it draws live. Note for the record: in North-Up the "snapshot" is a copy of a frame that was just drawn anyway, so no drawing work is wasted either way; the effect of this change is about 0.8 s more live drawing after each touch before the cheap cached frame takes over.
+- [x] The comment above the render cache now says 1 second and no finger instead of 200 ms. All 25 `?v=` numbers are 84.
+- [x] Left out, as spec'd: the 6-second steady-heading hold and every other trigger, the airport popup, tap targets and GPS handling.
+
+**Verification:** headless Chromium at 412x915 with real touch events sent through the browser's input protocol (and the mouse), fake clock offset.
+- Track-Up: a finger held still on the map for over 1.5 s with a long steady heading takes no snapshot; after lifting, none at 0.55 s and one at 1.3 s; a two-finger pinch paused mid-pinch takes none (and the pinch still zooms); with one of two fingers lifted it still counts as touching; after the last lifts and 1 s it snapshots; a cancelled touch releases it; 20 drag steps with a finger down never snapshot; a held mouse button takes none and a snapshot follows 1 s after release; a layer toggle restarts the 1 s (none at 0.7 s, one after 1 s).
+- North-Up: at rest it uses the cache (0 live redraws in 0.8 s); with a finger held it draws live on every frame (50 in 1.5 s); 0.5 s after lifting it is still live; 1.2 s after lifting it is back on the cache with no redraws. The old build (v83) used the cache even with a finger held still (0 live redraws), which is what this fixes.
+- A tap on a drawer header still works; zero JS errors.
+- The earlier suites were rerun: all pass (the Track-Up suite's timings updated to 1 second, the version buster suite shifted to 84, the version check expects 25 references). The auto-open (v79) test still has its one failing check about my stale scratch comparison folder, not the product.
+- Not tested: a real phone with real fingers.
+
 ## Build Queue
 
 Fully specified work that is waiting for a go-ahead. Items leave this list in the same commit that builds them.
 
-### 1. Track-Up snapshot: never while a finger is on the screen, and wait 1 second instead of 200 ms
-**Not yet authorized to build.** Would ship as v84 (every `?v=` number in
-`index.html` becomes 84).
-
-Why (Jon): in Track-Up the sliding snapshot (Build Log 23) is taken once the
-view has held still for 200 ms. A pinch that pauses with the fingers still
-down can satisfy that, and it should not: the fingers are on the screen, so
-the person is still doing something, and a snapshot would be wasted as soon
-as they move again.
-
-The change, `js/live-layer.js` only (the Track-Up part of `draw()`):
-- **No snapshot while any finger is on the screen.** A small touch tracker
-  counts fingers down: it goes on at `touchstart` and off at `touchend` or
-  `touchcancel` once no touches remain (a mouse button held down counts too,
-  for desktop). It uses passive document-level listeners, so the existing
-  pan, pinch and tap handling is not touched. While a finger is down the map
-  is drawn live, as it is now during a pan or zoom.
-- **Wait 1 second, not 200 ms.** The snapshot is only taken once everything
-  the signature watches (pan, zoom, toggles, day/night and the rest) has
-  held still for 1 second, and the 1 second starts when the last finger
-  lifts. The 6-second steady-heading hold and every other trigger stay as
-  they are.
-- The constant `TRACKUP_SLIDE_SETTLE_MS` goes from 200 to 1000.
-
-Open question for Jon: the North-Up cache has the same 200 ms wait (it was
-there before the Track-Up work). This item leaves North-Up exactly as it is;
-say so if it should get the same finger rule and 1 second.
-
-Test plan: headless Chromium at 412x915 with real touch events: with a finger
-held still on the map for more than a second (and with two fingers
-mid-pinch), no snapshot is taken; after the finger lifts, none for the first
-second and one after it; a mouse button held does the same; a pan or pinch
-that is still moving never snapshots; cancelled touches release it; taps on
-the map, the drawers and the airport popup still work as before; North-Up
-caching unchanged; then the earlier suites (the Track-Up suite's settle
-timings are updated to 1 second), the version check for `?v=84`, and the
-live site.
-
+_Empty — nothing queued right now._
 
 ## Build Planner
 

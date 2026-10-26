@@ -114,7 +114,8 @@
     // current projection every time they're drawn. Rather than doing that
     // every single frame forever (as the app did before), this snapshots
     // the finished result to an offscreen canvas once the view has held
-    // perfectly still for 200ms, and just stamps that image onto the
+    // perfectly still for 1 second (with no finger on the screen), and
+    // just stamps that image onto the
     // screen on every subsequent idle frame -- a cheap image copy instead
     // of a real redraw. Any pan, zoom, or Track-Up rotation change falls
     // straight back to full live rendering (exactly like before this
@@ -124,6 +125,11 @@
         lastSignature: null,
         lastChangeTime: 0,
         cacheValid: false,
+        // A finger (or held mouse button) on the screen means the person is
+        // still doing something: neither cache is used or snapshotted until
+        // 1 second after the last one lifts. See the listeners below.
+        touching: false,
+        touchReleasedAt: 0,
         // Extra rows/columns of base map kept around the Track-Up snapshot
         // (see drawTrackUpBase below); non-zero only while that snapshot is
         // being rendered, so viewport culling keeps the margins' states too.
@@ -142,6 +148,23 @@
         }
     };
     STATE.render.cacheCtx = STATE.render.cacheCanvas.getContext('2d');
+
+    // Passive, document-level listeners that only watch: the existing pan,
+    // pinch and tap handling is untouched.
+    (function trackFingersDown() {
+        const R = STATE.render;
+        function setTouching(on) {
+            if (R.touching && !on) R.touchReleasedAt = performance.now();
+            R.touching = on;
+        }
+        const opts = { passive: true, capture: true };
+        document.addEventListener('touchstart', (e) => setTouching(e.touches.length > 0), opts);
+        document.addEventListener('touchend', (e) => setTouching(e.touches.length > 0), opts);
+        document.addEventListener('touchcancel', (e) => setTouching(e.touches.length > 0), opts);
+        document.addEventListener('mousedown', () => setTouching(true), opts);
+        document.addEventListener('mouseup', () => setTouching(false), opts);
+        window.addEventListener('blur', () => setTouching(false));
+    })();
     STATE.render.slide.ctx = STATE.render.slide.canvas.getContext('2d');
 
     // ------------------------------------------------------------
@@ -162,7 +185,8 @@
     const TRACKUP_SLIDE_REFRESH_FRACTION = 0.2; // re-snapshot when under this share of the ahead margin is left
     const TRACKUP_SLIDE_STEADY_MS = 6000;       // heading must hold this long before a snapshot is taken
     const TRACKUP_SLIDE_HEADING_TOL_DEG = 1;
-    const TRACKUP_SLIDE_SETTLE_MS = 200;        // same stillness the North-Up cache waits for
+    const TRACKUP_SLIDE_SETTLE_MS = 1000;       // everything the signature watches must hold still this long, counted from the last finger lifting
+    const NORTHUP_CACHE_SETTLE_MS = 1000;       // same wait before the North-Up cache is used
 
     function angleDiffDeg(a, b) {
         return Math.abs(((a - b + 540) % 360) - 180);
@@ -228,7 +252,8 @@
             }
         }
 
-        if (!sl.valid && now - sl.steadySince >= TRACKUP_SLIDE_STEADY_MS && now - sl.sigChangeTime >= TRACKUP_SLIDE_SETTLE_MS) {
+        if (!sl.valid && !R.touching && now - sl.steadySince >= TRACKUP_SLIDE_STEADY_MS &&
+            now - Math.max(sl.sigChangeTime, R.touchReleasedAt) >= TRACKUP_SLIDE_SETTLE_MS) {
             renderTrackUpSnapshot(w, h);
             const planeProj = project(STATE.plane.lat, STATE.plane.lon);
             sl.hdg0 = hdg;
@@ -306,8 +331,8 @@
             STATE.render.lastChangeTime = now;
             STATE.render.cacheValid = false;
         }
-        const idleDuration = now - STATE.render.lastChangeTime;
-        const cacheReady = STATE.render.cacheValid && idleDuration >= 200 &&
+        const idleDuration = now - Math.max(STATE.render.lastChangeTime, STATE.render.touchReleasedAt);
+        const cacheReady = STATE.render.cacheValid && !STATE.render.touching && idleDuration >= NORTHUP_CACHE_SETTLE_MS &&
             STATE.render.cacheCanvas.width === canvas.width && STATE.render.cacheCanvas.height === canvas.height;
 
         if (cacheReady) {
