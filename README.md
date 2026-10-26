@@ -350,12 +350,66 @@ Built as spec'd in the Build Queue, with Jon's confirmed reading of the 140 to 1
 
 Fully specified work that is waiting for a go-ahead. Items leave this list in the same commit that builds them.
 
-_Empty — nothing queued right now._
+### 1. Track-Up mode: cache an oversized map snapshot and slide it instead of redrawing
+**Not yet authorized to build.** Would ship as v82 (every `?v=` number in
+`index.html` becomes 82).
+
+The problem: in Track-Up the plane's projected position is part of the
+render-cache signature (`draw()` in `js/live-layer.js`), and the plane is
+dead-reckoned forward every frame, so the signature changes every frame and
+the whole base map is redrawn about 60 times a second. North-Up already
+caches its snapshot once the view holds still for 200 ms; Track-Up never
+does. Jon's idea: while the heading is steady the map just moves under the
+plane in a straight line, so snapshot a slightly oversized picture once and
+slide it, instead of redrawing.
+
+The design:
+- **Oversized snapshot (Track-Up only).** The cache holds the screen plus
+  70 px ahead of the plane (straight up on screen, since Track-Up puts the
+  heading at the top) and 10 px on each side. Nothing behind. About 13% more
+  pixels than the screen.
+- **Sliding.** While the snapshot is valid, each frame draws it shifted by
+  the plane's movement since the snapshot, in map space, rounded to whole
+  device pixels so it stays sharp. The live layer (plane, labels, 📍) is still
+  drawn fresh every frame on top, exactly as now.
+- **Margin math (checked with the real projection).** The map scrolls about
+  47 px a minute at max zoom and 500 kt (about 16 px at zoom 40, about 1 px at
+  the full-US view). Since 70 px is fixed, it lasts roughly 70 s of margin at
+  the worst case (max zoom, 500 kt) after the refresh point below, and much
+  longer at lower zoom or speed.
+- **When it takes a snapshot.** Only after the heading has held within 1° of
+  one value for 6 seconds (two 3-second GPS polls, so one dropped fix does not
+  count as a change of heading and one late fix cannot trigger a snapshot in
+  the middle of a turn). It never snapshots while turning.
+- **When it throws the snapshot away and redraws live.** The remaining margin
+  ahead drops under 20% (about 14 px); the plane shifts past the side margin
+  (for example after a late GPS fix corrects the position); the heading
+  drifts more than 1° from the snapshot's; or anything already in the
+  signature changes: pan, zoom, the layer toggles, day/night, border color,
+  terminator or seasonal date, or the screen size. While a snapshot is not
+  valid it draws live, as it does today.
+- **North-Up is untouched.** Its caching (200 ms of stillness) stays exactly
+  as is. Cutscenes, the airport popup, the tap targets and GPS handling are
+  untouched.
+
+Where: `js/live-layer.js` (the cache section and `draw()`) and new
+`STATE.render` fields in the same place. Constants for 70, 10, 6 s, 1° and
+20% sit at the top of that section.
+
+Test plan: headless Chromium at 412x915, synthetic GPS and a fake clock.
+Count how many times the base map is actually redrawn in a straight 2-minute
+Track-Up flight (expected: a handful, not thousands), and compare the
+sliding frame to a full live redraw of the same frame, pixel by pixel
+(expected: identical or within rounding) at several zooms and headings. Also
+check: no snapshot during a turn or before 6 s of steady heading; a dropped
+fix leaves the timer running; a late fix that jumps the position forces a
+redraw; each trigger above falls back to live drawing; North-Up caching
+behaves as before; toggling Track-Up on and off; then the full earlier
+suites, the version check for `?v=82`, and the live site.
+
 
 ## Build Planner
 
 Ideas and known gaps with no committed design yet. Resolved, built, dropped or superseded items are deleted from here, and their history lives in the Build Log.
 
-### Surfaced in earlier sessions
-1. **Track-Up mode never gets the idle-snapshot caching:** a limitation,
-   not a regression
+_Empty — nothing in the Planner right now._
