@@ -8,7 +8,10 @@ Read `README.md` first. It holds the standing rule, the Build Log, the Build Que
 - Every request is logged first (Queue or Planner), with a number and a precise description.
 - Logging is not build permission. Build only after Jon says "build N", "build all" or "go ahead and build".
 - Each build gets a Build Log entry (what changed, how it was tested, what was left out).
-- Only edit the Queue, Planner and Log when Jon says to.
+- You own editing the Build Log, Build Queue and Build Planner sections of `README.md` as part of doing the work. Update them yourself, as you go. Don't wait for Jon to write them and don't ask him to. Jon decides what moves from the Planner into the Queue, and when to build.
+- Build Log entries are append-only. Once something ships, a later correction is its own new Build Log entry, not an edit to the old one.
+- Check the real file (or run the command) before telling Jon what the Queue, Planner, Log, tests or versions say. Never report from memory.
+- The full workflow is in `docs/BUILD-WORKFLOW.md`.
 
 ## Standing rules
 

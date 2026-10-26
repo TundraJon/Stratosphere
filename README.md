@@ -395,6 +395,15 @@ Built as spec'd in the Build Queue (item 1), with Jon's answer to the open quest
 - The earlier suites were rerun: all pass (the Track-Up suite's timings updated to 1 second, the version buster suite shifted to 84, the version check expects 25 references). The auto-open (v79) test still has its one failing check about my stale scratch comparison folder, not the product.
 - Not tested: a real phone with real fingers.
 
+### Build Log 26 (completed): workflow doc adopted, ownership rule changed, and a note about an edit to Build Log 24
+Docs only; no code or site file changed, so there is no version bump (the `?v=` numbers stay at 84). Jon shared the Build Workflow write-up from his Startpage project and said to adopt it, after the Queue, Planner and Log came up as "your memory of what we have to do and what we have done".
+- [x] `docs/BUILD-WORKFLOW.md` added: Jon's Build Workflow document, copied unchanged.
+- [x] `CLAUDE.md`, "Before any work": the line "Only edit the Queue, Planner and Log when Jon says to" is replaced by the workflow's ownership rule (I own editing the Build Log, Build Queue and Build Planner as part of the work; Jon decides what moves from the Planner into the Queue and when to build). Three lines added under it: Build Log entries are append-only (corrections become a new entry), check the real file or run the command before reporting what the Queue, Planner, Log, tests or versions say, and a pointer to `docs/BUILD-WORKFLOW.md`. Nothing else in `CLAUDE.md` changed, and the standing rule at the top of this file is unchanged.
+- [x] **Correction note for Build Log 24:** after Build Log 24 was written, I edited one bullet of it in place (the "Left out" bullet) to change "Rivers and city glow stay in the Planner" to "Rivers stay in the Planner. City glow was dropped (Jon can already see even small cities' lights from the air, so no callout is needed)." City glow was never in the Planner, so the old wording was wrong. The workflow says a shipped entry is never edited and corrections are their own entry; that edit broke that rule, and this entry is the record of it. The same cleanup changed one line in the Planner (the River callouts item now points to Build Log 24 instead of a Queue item that no longer exists), which is an edit the Planner allows.
+- [x] Not changed: the Planner's and Queue's empty-state wording. The workflow suggests `_Empty — nothing backlogged right now._` for the Planner; the Planner currently has an item, and I will use that wording the next time it is empty.
+
+**Verification:** read all three changed files back after the edits: `docs/BUILD-WORKFLOW.md` is byte-identical to the uploaded file (`cmp`), the new `CLAUDE.md` lines are in place and the rest of the file is unchanged (`git diff` shows only those lines), and this entry sits above the Build Queue heading with the Queue still reading `_Empty — nothing queued right now._` and the Planner still holding the River callouts item. Nothing was run in a browser because no site file changed.
+
 ## Build Queue
 
 Fully specified work that is waiting for a go-ahead. Items leave this list in the same commit that builds them.
