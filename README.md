@@ -384,7 +384,44 @@ Built as spec'd in the Build Queue (item 2, including the Grand Canyon and the 1
 
 Fully specified work that is waiting for a go-ahead. Items leave this list in the same commit that builds them.
 
-_Empty — nothing queued right now._
+### 1. Track-Up snapshot: never while a finger is on the screen, and wait 1 second instead of 200 ms
+**Not yet authorized to build.** Would ship as v84 (every `?v=` number in
+`index.html` becomes 84).
+
+Why (Jon): in Track-Up the sliding snapshot (Build Log 23) is taken once the
+view has held still for 200 ms. A pinch that pauses with the fingers still
+down can satisfy that, and it should not: the fingers are on the screen, so
+the person is still doing something, and a snapshot would be wasted as soon
+as they move again.
+
+The change, `js/live-layer.js` only (the Track-Up part of `draw()`):
+- **No snapshot while any finger is on the screen.** A small touch tracker
+  counts fingers down: it goes on at `touchstart` and off at `touchend` or
+  `touchcancel` once no touches remain (a mouse button held down counts too,
+  for desktop). It uses passive document-level listeners, so the existing
+  pan, pinch and tap handling is not touched. While a finger is down the map
+  is drawn live, as it is now during a pan or zoom.
+- **Wait 1 second, not 200 ms.** The snapshot is only taken once everything
+  the signature watches (pan, zoom, toggles, day/night and the rest) has
+  held still for 1 second, and the 1 second starts when the last finger
+  lifts. The 6-second steady-heading hold and every other trigger stay as
+  they are.
+- The constant `TRACKUP_SLIDE_SETTLE_MS` goes from 200 to 1000.
+
+Open question for Jon: the North-Up cache has the same 200 ms wait (it was
+there before the Track-Up work). This item leaves North-Up exactly as it is;
+say so if it should get the same finger rule and 1 second.
+
+Test plan: headless Chromium at 412x915 with real touch events: with a finger
+held still on the map for more than a second (and with two fingers
+mid-pinch), no snapshot is taken; after the finger lifts, none for the first
+second and one after it; a mouse button held does the same; a pan or pinch
+that is still moving never snapshots; cancelled touches release it; taps on
+the map, the drawers and the airport popup still work as before; North-Up
+caching unchanged; then the earlier suites (the Track-Up suite's settle
+timings are updated to 1 second), the version check for `?v=84`, and the
+live site.
+
 
 ## Build Planner
 
