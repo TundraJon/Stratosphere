@@ -370,7 +370,7 @@ Built as spec'd in the Build Queue (item 2, including the Grand Canyon and the 1
 - [x] New file `js/callouts.js` (loaded after `controls.js`, so the page now has 25 file references, all `?v=83`): checks all landmarks once a second. A landmark fires when it is within its size's distance (huge 80, large 50, medium 25, small 10 NM), is not behind the plane (within 90° of the heading), is in daylight for `'day'` ones (sun above 6° below the horizon, from `getSubsolarPoint()`), the plane is going faster than 140 MPH, no cutscene is playing, and it has not already fired. Each landmark fires once and re-arms beyond 1.25 times its distance. The Grand Canyon uses the distance to the nearest point on `GRAND_CANYON_PATH` (to the nearest spot on each segment), and the side and the "behind" test use that point.
 - [x] The banner: a pill under the Flight Info drawer with the emoji, name, distance and side ("🚲 Mackinac Island, 30 NM ahead, on your left"; "straight ahead" within 15° of the heading). Its distance keeps updating, it stays 8 s, fades over 0.5 s, and a tap dismisses it. One at a time, others wait nearest-first and are dropped if no longer valid. It sits clear of the compass and Reset button (side margins of 56 px; long names wrap to two lines).
 - [x] `index.html` and `css/styles.css`: the banner element and its style, a script tag for `js/callouts.js`, and a "Landmark callouts" button in Settings under Map Layers (on by default, saved between launches in `localStorage`, independent of the Landmarks layer).
-- [x] Left out, as spec'd: how other landmarks are drawn, the map layers, render cache, airport popup, cutscenes, GPS handling and altitude readout. The brown Grand Canyon path still draws as before. Rivers and city glow stay in the Planner.
+- [x] Left out, as spec'd: how other landmarks are drawn, the map layers, render cache, airport popup, cutscenes, GPS handling and altitude readout. The brown Grand Canyon path still draws as before. Rivers stay in the Planner. City glow was dropped (Jon can already see even small cities' lights from the air, so no callout is needed).
 - [x] Not in the spec, small: the banner's text uses `text-wrap: balance` so a two-line wrap is not a single orphan word.
 
 **Verification:** headless Chromium at 412x915, no GPS (synthetic fixes), fake date and clock offset, the 1-second timer stopped so each check is run by hand.
@@ -409,7 +409,7 @@ Ideas and known gaps with no committed design yet. Resolved, built, dropped or s
 1. **River callouts:** Jon noticed the rivers that appear on the map are easy
    to see from the window, so a callout each time the plane crosses (or
    flies along) a river drawn on the map. Not spec'd; he said "I don't know"
-   on this. Same line-feature method as the Grand Canyon callout in Build Queue item 2
+   on this. Same line-feature method as the Grand Canyon callout (built in Build Log 24)
    (distance to the nearest point of the river's path). Open questions: crossing only, or
    also flying alongside; which rivers (the always-drawn Mississippi, the
    ones behind the Other Rivers toggle, or only the biggest); daytime only
