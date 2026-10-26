@@ -388,6 +388,11 @@ The design:
   signature changes: pan, zoom, the layer toggles, day/night, border color,
   terminator or seasonal date, or the screen size. While a snapshot is not
   valid it draws live, as it does today.
+- **The day/night terminator stays inside the snapshot** (it is part of the
+  base map, not the live layer). Its existing 60-second refresh is part of the
+  signature, so with the terminator on, each refresh expires the snapshot and
+  it is redrawn about once a minute; with it off, only the 70 px margin
+  decides.
 - **North-Up is untouched.** Its caching (200 ms of stillness) stays exactly
   as is. Cutscenes, the airport popup, the tap targets and GPS handling are
   untouched.
