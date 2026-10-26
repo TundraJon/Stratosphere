@@ -416,13 +416,36 @@ Ideas and known gaps with no committed design yet. Resolved, built, dropped or s
 
 ### Surfaced in this session
 1. **River callouts:** Jon noticed the rivers that appear on the map are easy
-   to see from the window, so a callout each time the plane crosses (or
-   flies along) a river drawn on the map. Not spec'd; he said "I don't know"
-   on this. Same line-feature method as the Grand Canyon callout (built in Build Log 24)
-   (distance to the nearest point of the river's path). Open questions: crossing only, or
-   also flying alongside; which rivers (the always-drawn Mississippi, the
-   ones behind the Other Rivers toggle, or only the biggest); daytime only
-   (rivers are dark at night); how to keep a coast-to-coast flight from
-   producing a banner every few minutes (for example, only the biggest
-   rivers, or one banner per river per flight); and the naming (the river
-   data has no names yet beyond its keys).
+   to see from the window, so a callout when the plane is about to pass over
+   one. Not spec'd; Jon is not sure he wants it right now, and the plan is to
+   wait until he has flown with the landmark callouts (Build Log 24) and seen
+   how often and how the banners feel, then decide.
+   - What is drawn (checked in `js/data/map-data.js`): 9 rivers. The
+     Mississippi (only the "middle chain" of it, always drawn), and eight
+     behind the Other Rivers toggle: Missouri (about 1,670 NM of line), Ohio,
+     Columbia, Colorado, Rio Grande, Arkansas, Tennessee, Snake. A
+     coast-to-coast flight crosses maybe 4 to 6 of them, so the number of
+     banners would be small. None of the river data has names except the
+     object keys; the Mississippi chain has none (adding names is a small
+     data edit).
+   - The distance problem: a river is a thin line hundreds to over a thousand
+     NM long, and it is only worth calling out when the plane is about to
+     cross it (seen from the window at roughly 15 to 20 NM). The landmark
+     rule (fire within 10 to 80 NM of any part of it) would also fire while
+     flying parallel to a river, which is useless.
+   - **Option A, simple:** reuse the Grand Canyon line method (distance to
+     the nearest point on the river's path) with a short range of about
+     15 NM, daytime only, once per river per flight with the same re-arm
+     rule. Text like "Missouri River, 12 NM ahead, on your right". Cheap
+     because the machinery from Build Log 24 already exists.
+   - **Option B, smarter:** project the plane's track forward a few minutes
+     and fire only when that track crosses the river's path, with text like
+     "Crossing the Missouri River in 3 minutes". Much more useful, but it is
+     new geometry (line-segment intersection against the river's segments,
+     with the track from the heading and speed, which can be unsteady in a
+     turn).
+   - Recommendation so far: after the flight, if Jon still wants it, start
+     with Option A and upgrade to B later if it is not enough.
+   - Still open: which rivers (all 9, or only some); whether the Mississippi
+     chain counts as the whole river; the naming; whether it needs its own
+     on/off setting or rides the existing Landmark callouts button.
