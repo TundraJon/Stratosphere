@@ -1,6 +1,8 @@
     // --- CANVAS ENGINE ---
     const canvas = document.getElementById('map-canvas');
-    const ctx = canvas.getContext('2d');
+    // `let`, not `const`: the Track-Up snapshot (live-layer.js) briefly points
+    // this at an offscreen canvas while it renders the base map.
+    let ctx = canvas.getContext('2d');
 
     let hasInitiallyFit = false;
 
@@ -180,7 +182,10 @@
             return { x: rx + originX, y: ry + originY };
         }
 
-        const corners = [screenToMap(0, 0), screenToMap(w, 0), screenToMap(0, h), screenToMap(w, h)];
+        // Normally the screen itself; a little larger while the Track-Up snapshot
+        // (which keeps margins around the screen) is being rendered.
+        const pad = STATE.render.cullPad;
+        const corners = [screenToMap(-pad.side, -pad.top), screenToMap(w + pad.side, -pad.top), screenToMap(-pad.side, h + pad.bottom), screenToMap(w + pad.side, h + pad.bottom)];
         const xs = corners.map(c => c.x), ys = corners.map(c => c.y);
         return { minX: Math.min(...xs), maxX: Math.max(...xs), minY: Math.min(...ys), maxY: Math.max(...ys) };
     }

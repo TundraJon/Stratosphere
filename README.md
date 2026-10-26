@@ -346,74 +346,29 @@ Built as spec'd in the Build Queue, with Jon's confirmed reading of the 140 to 1
 - Version check: 24 references, all `?v=81`. The earlier suites were rerun: offline cache, home, home marker, use-my-location, fonts, installable, popup close, destination save, startup race (0 of 30 loads), altitude diagnostic and altitude rule all pass; the version buster suite passes with its numbers shifted up by one (9 of 9). The pin test has one stale assertion (it expects a black runway glyph in the old build to compare against) that fails the same way on unchanged v80, so it is not from this build.
 - Not tested: a real phone and a real flight.
 
+### Build Log 23 (completed): v82, Track-Up mode: cache an oversized map snapshot and slide it instead of redrawing
+Built as spec'd in the Build Queue (item 1), after Jon asked to "build all".
+- [x] `js/live-layer.js`: in Track-Up, `draw()` now uses a sliding snapshot instead of redrawing the base map every frame. A snapshot of the base map is rendered once into an offscreen canvas that is the screen plus 70 px ahead of the plane and 10 px on each side; each frame it is copied onto the screen shifted by the plane's movement (worked out in map space from the position and heading at the snapshot, rounded to whole device pixels so it stays sharp). The live layer (plane, route line, 📍) is still drawn fresh on top every frame.
+- [x] When it takes a snapshot: only after the heading has held within 1° of one value for 6 seconds, and the same things the North-Up cache watches (zoom, pan, layer toggles, day/night, border colors, seasonal date, the terminator's 60-second refresh, screen size) have held still for 200 ms. When it throws the snapshot away and goes back to live drawing: the heading drifts more than 1° from the snapshot's, less than 20% of the 70 px ahead margin is left (56 px of travel), the plane moves more than 10 px sideways or behind, anything in that list changes, or something outside `draw()` sets `STATE.render.cacheValid = false` (home location, destination: the same switch the North-Up cache uses). The day/night terminator stays inside the snapshot.
+- [x] North-Up caching is unchanged. Switching to North-Up drops the Track-Up snapshot and invalidates the North-Up cache; switching back starts with no snapshot.
+- [x] `js/canvas.js` (two small supporting changes): `ctx` is now `let` instead of `const`, because the snapshot is rendered by pointing `ctx` at the offscreen canvas while `drawBaseAndOverlays()` runs and then pointing it back; and `getVisibleMapBounds()` (the off-screen state culling) now takes a padding from `STATE.render.cullPad`, zero normally, so the states inside the snapshot's margins are drawn too.
+- [x] **Two things beyond the spec, both small:** (1) the snapshot has a 10 px margin behind the plane as well (the spec said nothing behind), so a small backward position correction does not expose an empty edge; it is dropped past 10 px. (2) the 200 ms "signature has held still" wait before a snapshot, the same as the North-Up cache, so a pinch-zoom does not render a snapshot on every frame.
+- [x] Known limit: the snapshot is not rotated, so with the heading up to 1° off the snapshot's the map is up to a few pixels out of line with the live layer at the far corners (measured below).
+- [x] Left out, as spec'd: the cutscenes, airport popup, tap targets and GPS handling are untouched.
+
+**Verification:** headless Chromium at 412x915 (devicePixelRatio 2 and 2.625), synthetic GPS, fake clock offset.
+- Redraws: in about 8 seconds of steady Track-Up flight the old build (v81) redrew the base map 397 times; the new build 0 (the snapshot was already taken and only slid).
+- Slid frame against a full live redraw of exactly the same state: with the snapshot slid 0, 25 and 50 px, no pixel differs by more than 60/255 (0.00%), and at most 0.06% differ by more than 25/255 (the rest is sub-pixel anti-aliasing). With the heading 0.9° off the snapshot's (the most allowed): 0.3% of pixels differ by more than 60/255 and 1.35% by more than 25/255, nearly all in the middle of the screen along lines and edges.
+- Triggers: a heading drift of more than 1° drops it; while turning the map is drawn live every frame; after the turn ends there is no snapshot until the heading has held 6 s; pan, zoom, the Landmarks layer toggle, the day/night switch, an outside rebuild request and the terminator's 60-second refresh each drop it and a new one appears after things settle; a 4 NM sideways jump, a 6 NM backward jump and running down the ahead margin each force a fresh snapshot; a small forward move keeps it.
+- North-Up: still no redraws while still (0 in 2 s); the Track-Up snapshot is dropped on switching and none is left when switching back. Zero JS errors.
+- The v64 to v81 suites were rerun: all pass (the version buster suite with its numbers shifted to 82). The auto-open (v79) test has one failing check about the OLD comparison folder in my scratch area, which is now a newer copy and no longer shows the old 1 NM behavior; the checks on the current build all pass.
+- Not tested: a real phone and a real flight, and battery or frame-time savings on a device (the redraw count is the measure used here).
+
 ## Build Queue
 
 Fully specified work that is waiting for a go-ahead. Items leave this list in the same commit that builds them.
 
-### 1. Track-Up mode: cache an oversized map snapshot and slide it instead of redrawing
-**Not yet authorized to build.** Would ship as v82 (every `?v=` number in
-`index.html` becomes 82).
-
-The problem: in Track-Up the plane's projected position is part of the
-render-cache signature (`draw()` in `js/live-layer.js`), and the plane is
-dead-reckoned forward every frame, so the signature changes every frame and
-the whole base map is redrawn about 60 times a second. North-Up already
-caches its snapshot once the view holds still for 200 ms; Track-Up never
-does. Jon's idea: while the heading is steady the map just moves under the
-plane in a straight line, so snapshot a slightly oversized picture once and
-slide it, instead of redrawing.
-
-The design:
-- **Oversized snapshot (Track-Up only).** The cache holds the screen plus
-  70 px ahead of the plane (straight up on screen, since Track-Up puts the
-  heading at the top) and 10 px on each side. Nothing behind. About 13% more
-  pixels than the screen.
-- **Sliding.** While the snapshot is valid, each frame draws it shifted by
-  the plane's movement since the snapshot, in map space, rounded to whole
-  device pixels so it stays sharp. The live layer (plane, labels, 📍) is still
-  drawn fresh every frame on top, exactly as now.
-- **Margin math (checked with the real projection).** The map scrolls about
-  47 px a minute at max zoom and 500 kt (about 16 px at zoom 40, about 1 px at
-  the full-US view). Since 70 px is fixed, it lasts roughly 70 s of margin at
-  the worst case (max zoom, 500 kt) after the refresh point below, and much
-  longer at lower zoom or speed.
-- **When it takes a snapshot.** Only after the heading has held within 1° of
-  one value for 6 seconds (two 3-second GPS polls, so one dropped fix does not
-  count as a change of heading and one late fix cannot trigger a snapshot in
-  the middle of a turn). It never snapshots while turning.
-- **When it throws the snapshot away and redraws live.** The remaining margin
-  ahead drops under 20% (about 14 px); the plane shifts past the side margin
-  (for example after a late GPS fix corrects the position); the heading
-  drifts more than 1° from the snapshot's; or anything already in the
-  signature changes: pan, zoom, the layer toggles, day/night, border color,
-  terminator or seasonal date, or the screen size. While a snapshot is not
-  valid it draws live, as it does today.
-- **The day/night terminator stays inside the snapshot** (it is part of the
-  base map, not the live layer). Its existing 60-second refresh is part of the
-  signature, so with the terminator on, each refresh expires the snapshot and
-  it is redrawn about once a minute; with it off, only the 70 px margin
-  decides.
-- **North-Up is untouched.** Its caching (200 ms of stillness) stays exactly
-  as is. Cutscenes, the airport popup, the tap targets and GPS handling are
-  untouched.
-
-Where: `js/live-layer.js` (the cache section and `draw()`) and new
-`STATE.render` fields in the same place. Constants for 70, 10, 6 s, 1° and
-20% sit at the top of that section.
-
-Test plan: headless Chromium at 412x915, synthetic GPS and a fake clock.
-Count how many times the base map is actually redrawn in a straight 2-minute
-Track-Up flight (expected: a handful, not thousands), and compare the
-sliding frame to a full live redraw of the same frame, pixel by pixel
-(expected: identical or within rounding) at several zooms and headings. Also
-check: no snapshot during a turn or before 6 s of steady heading; a dropped
-fix leaves the timer running; a late fix that jumps the position forces a
-redraw; each trigger above falls back to live drawing; North-Up caching
-behaves as before; toggling Track-Up on and off; then the full earlier
-suites, the version check for `?v=82`, and the live site.
-
-
-### 2. "Look out the window" landmark callouts
+### 1. "Look out the window" landmark callouts
 **Not yet authorized to build.** Ships as the next free version number when
 it is built (v83 if it follows item 1, v82 if it goes first); every `?v=`
 number in `index.html` changes to it.
