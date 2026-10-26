@@ -417,4 +417,15 @@ suites, the version check for `?v=82`, and the live site.
 
 Ideas and known gaps with no committed design yet. Resolved, built, dropped or superseded items are deleted from here, and their history lives in the Build Log.
 
-_Empty — nothing in the Planner right now._
+### Surfaced in this session
+1. **"Look out the window" callouts:** a small banner when the plane gets
+   near a landmark that could be seen from the window, saying which side it
+   is on and how far ahead (for example "Grand Canyon, 15 NM ahead, on your
+   left"). The data already exists (the landmarks layer, the plane position
+   and heading); the side comes from the bearing to the landmark relative to
+   the heading. Idea from Jon, inspired by Flyover Country's "what's below
+   me" feature. Not spec'd. Open questions: how far off the track still
+   counts as visible (about 25 NM was suggested); daytime only or also at
+   night for cities; which landmarks qualify; how quiet it should be (a
+   fading banner rather than a pop-up that has to be dismissed); and whether
+   it has a setting to turn it off.
