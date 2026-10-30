@@ -449,3 +449,10 @@ Ideas and known gaps with no committed design yet. Resolved, built, dropped or s
    - Still open: which rivers (all 9, or only some); whether the Mississippi
      chain counts as the whole river; the naming; whether it needs its own
      on/off setting or rides the existing Landmark callouts button.
+2. **Tapping an airport's code letters sometimes does not open its runway screen:** reported by Jon, with no details yet on which airport, zoom level or view. What I checked (headless Chromium at 412x915, real touch taps on the code text of KDEN, 4 places on the text, at zoom 20, 30, 60 and 120, North-Up and Track-Up, current build and v81 for comparison): every tap opens the popup, in both builds, so v82 to v84 did not break it. Things in the code (`js/touch.js`) that make a tap on the letters do nothing, any of which could be what Jon hit:
+   - The Airports layer is off. Tapping needs it on.
+   - Zoom is below 20 (`LABEL_DETAIL_ZOOM_THRESHOLD`). The 3-letter codes are drawn at every zoom, but only tappable from 20 up, so letters you can see at a lower zoom do nothing.
+   - The plane icon is within 22 px of the tap (more when the icon is enlarged to 2x or 3x). The plane tap is checked first and wins, so a code right next to the plane (near the airport you are leaving or landing at) resizes the plane instead.
+   - The tap was not quick or still enough (it must be under 400 ms and move less than 12 px).
+   - For two airports close together, the first one in the list whose tap area covers the point opens, which could be the neighbor instead.
+   Open questions for Jon: which airport and roughly what zoom, whether the Airports layer was on, whether the plane was near it, and whether nothing happened or a different airport (or the plane resizing) happened instead.
