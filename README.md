@@ -408,7 +408,51 @@ Docs only; no code or site file changed, so there is no version bump (the `?v=` 
 
 Fully specified work that is waiting for a go-ahead. Items leave this list in the same commit that builds them.
 
-_Empty — nothing queued right now._
+### 1. Fix: tapping an airport code (or the destination pin's code) does nothing in Track-Up unless the plane is heading north
+**Not yet authorized to build.** Would ship as v85 (every `?v=` number in
+`index.html` becomes 85). Reported by Jon: zoomed all the way in, Airports layer
+on, plane not near the airport, tapping the code letters does nothing, in
+what he calls follow mode (I understand that to be Track-Up, the compass
+button; **to be confirmed by Jon**).
+
+What is wrong (reproduced in headless Chromium at 412x915 with real touch
+taps, zoom 120, Track-Up, tapping three spots on KDEN's code text with the
+plane 90 px away): the tap opens the popup at heading 0, partly at 45 and
+315, and never at 90, 135, 180, 225 or 270. The same on the destination
+pin's code. North-Up works at every zoom from 20 up. The v81 build behaves
+identically, and the code is unchanged since the original single-file app, so
+none of builds v82 to v84 caused it.
+
+Why: in Track-Up the map is drawn rotated by minus the heading, and
+`drawFixedLabel()` (`js/render-loop.js`) rotates each label back by plus the
+heading, so the code text always sits upright on screen at the same offset
+from the airport's dot. The tap test in `js/touch.js` (`findTappedAirport()`
+and `isTapOnDestinationMarker()`) takes the tap's screen offset from the dot
+and rotates it by the heading again, as if the label were still tilted. That
+extra rotation swings the tappable box around the dot as the heading changes;
+it only lines up with the text when the heading is about north.
+
+The change (`js/touch.js` only):
+- In both functions, drop the rotation: use the tap's screen offset from the
+  dot (`dx`, `dy`) directly as the position in the label's space. Remove
+  `labelRotation`, `cosA` and `sinA` from both, and correct the comments that
+  say the rotation is accounted for.
+- Nothing else changes: the size of the tap box, the zoom 20 minimum for
+  regular airports (the destination pin has no minimum), the Airports layer
+  needing to be on, the plane tap being checked first, the tap rules (under
+  400 ms and 12 px of movement), and North-Up behavior.
+
+Left alone, noted: codes are drawn at every zoom but regular airports only
+open from zoom 20 up. Not part of this fix; say so if that should change too.
+
+Test plan: headless Chromium at 412x915, real touch taps. Track-Up at
+headings 0, 45, 90, 135, 180, 225, 270 and 315 and zoom 20, 60 and 120: taps
+on the code text of a regular airport and on the destination pin's code open
+the right popup; taps well away from the code (60 px or more) do not; North-Up
+results are identical to before; the plane tap still wins near the plane;
+the old build (v84) fails the same taps; then the earlier suites, the version
+check for `?v=85`, and the live site.
+
 
 ## Build Planner
 
@@ -449,10 +493,3 @@ Ideas and known gaps with no committed design yet. Resolved, built, dropped or s
    - Still open: which rivers (all 9, or only some); whether the Mississippi
      chain counts as the whole river; the naming; whether it needs its own
      on/off setting or rides the existing Landmark callouts button.
-2. **Tapping an airport's code letters sometimes does not open its runway screen:** reported by Jon, with no details yet on which airport, zoom level or view. What I checked (headless Chromium at 412x915, real touch taps on the code text of KDEN, 4 places on the text, at zoom 20, 30, 60 and 120, North-Up and Track-Up, current build and v81 for comparison): every tap opens the popup, in both builds, so v82 to v84 did not break it. Things in the code (`js/touch.js`) that make a tap on the letters do nothing, any of which could be what Jon hit:
-   - The Airports layer is off. Tapping needs it on.
-   - Zoom is below 20 (`LABEL_DETAIL_ZOOM_THRESHOLD`). The 3-letter codes are drawn at every zoom, but only tappable from 20 up, so letters you can see at a lower zoom do nothing.
-   - The plane icon is within 22 px of the tap (more when the icon is enlarged to 2x or 3x). The plane tap is checked first and wins, so a code right next to the plane (near the airport you are leaving or landing at) resizes the plane instead.
-   - The tap was not quick or still enough (it must be under 400 ms and move less than 12 px).
-   - For two airports close together, the first one in the list whose tap area covers the point opens, which could be the neighbor instead.
-   Open questions for Jon: which airport and roughly what zoom, whether the Airports layer was on, whether the plane was near it, and whether nothing happened or a different airport (or the plane resizing) happened instead.
