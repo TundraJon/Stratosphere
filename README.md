@@ -453,6 +453,52 @@ the old build (v84) fails the same taps; then the earlier suites, the version
 check for `?v=85`, and the live site.
 
 
+### 2. Smooth turns: spread each heading change over 3 seconds
+**Not yet authorized to build.** Would ship as the next free version number
+after item 1 (v86 if item 1 goes first); every `?v=` number in `index.html`
+changes to it. Requested by Jon, who agreed a one to two second lag behind the
+real heading is fine ("average the change in direction over the course of 3
+seconds, should look buttery smooth").
+
+Why: GPS is polled every 3 seconds and the app turns toward the new averaged
+heading at a fixed 10 degrees a second (`turnTowardHeading()`, with
+`TURN_RATE_DEG_PER_SEC`, in `js/telemetry.js`). A 3-degree change is finished
+in 0.3 seconds and then the heading holds about 2.7 seconds, so the Track-Up
+map (and the plane icon, compass and heading readout) turn in jumps. Measured
+identically in v81 and v84, so it is the original design and not caused by the
+snapshot work (Build Log 23).
+
+The change (`js/telemetry.js`, plus a field or two in `js/state.js`):
+- Whenever the target heading changes (a new GPS fix), work out how far the
+  plane's heading still has to turn (the short way around, so 359 to 1 is
+  2 degrees) and turn at the steady rate that covers it in 3 seconds
+  (remaining degrees divided by 3, per second). Each frame turns by that rate
+  times the frame time and stops exactly on the target.
+- In a steady turn this means each 3-degree step is spread over the 3 seconds
+  before the next fix, so the map rotates continuously at about 1 degree a
+  second with no pauses. If the heading has not quite arrived when the next
+  fix comes, the rate is recalculated from the remaining distance.
+- Keep the existing 10 degrees a second as the fastest turn allowed, so a large
+  change (for example the first fix at start-up, or swinging 90 degrees) still
+  turns at the same speed as today instead of snapping in 3 seconds. **To be
+  confirmed by Jon.**
+- Left alone: how GPS headings are averaged (last 5, vector average), the
+  GPS polling, the "below 2 knots the heading is frozen" rule, the
+  Track-Up snapshot code and its 1 degree tolerance, the cutscenes and the
+  airport popup. Everything that reads the plane's heading (the plane icon,
+  Track-Up rotation, compass, heading readout, dead-reckoning direction) gets
+  the smoother value, with the lag Jon accepted.
+
+Test plan: headless Chromium at 412x915, synthetic GPS fixes every 3 seconds
+with the heading 3 degrees further each time, logging the heading and the
+rotation shown on every frame: v84 reproduces the steps (3 degrees in 0.3 s,
+then a hold), the new build turns steadily (no single-frame change over
+about 0.1 degree and no hold longer than a frame), arrives at each target
+within 3 seconds, wraps correctly through 0/360, a 90-degree change still
+turns at no more than 10 degrees a second, frozen heading below 2 knots
+unchanged, Track-Up snapshot behavior unchanged (the earlier suites), then
+the version check and the live site.
+
 ## Build Planner
 
 Ideas and known gaps with no committed design yet. Resolved, built, dropped or superseded items are deleted from here, and their history lives in the Build Log.
@@ -501,9 +547,5 @@ Ideas and known gaps with no committed design yet. Resolved, built, dropped or s
    - Where it still fails: the first shot (18:19, GRR, 294 kt, Jon says above 10,000 ft) shows only the low source for at least 33 seconds (896 rising to 1,066 ft, about 300 ft a minute, which starts near the field's elevation and creeps up, which fits a cabin altitude, but that is also only a guess), and the app shows 1,050 ft. No high reading arrives in that stretch, so any rule that picks between sources has nothing to pick. This matches the earlier takeoff and descent complaint (about 800 ft when the captain says 10,000).
    - Idea: "take the higher": ignore a reading that is far below (for example more than 1,500 ft) the highest reading of the last 60 seconds, since cabin altitude is always below the real altitude. Fixes the flipping when both sources are present, but not the stretch where only the low one arrives. For that stretch the options are to show `--` (honest, but when would we know?), or hold the last high value for a while (wrong in a climb or descent), or leave it.
    - Open questions for Jon: was the first shot during the climb, and roughly how long did the low-only stretch last; does the low-only stretch happen mostly in climbs and descents; what he wants shown when only the low source is arriving; and whether the Altitude card should stay (the cruise values look right) or be replaced as discussed earlier.
-3. **Track-Up map turns in 3-degree jumps during a turn instead of smoothly:** reported by Jon from a flight (he thinks the new snapshot code is holding the picture for 3 seconds or more and then jumping when a new reading arrives; he remembers it as smooth before). What I checked (headless Chromium, a synthetic turn with a new GPS heading 3 degrees further on every 3 seconds, logging the heading and the rotation actually shown on every frame, v81 against v84):
-   - Both builds behave the same: the heading holds for about 2.7 seconds and then swings 3 degrees in about 0.3 seconds (6.0, 9.0 held, then 12.0, and so on). The snapshot is not involved in a turn: it is dropped as soon as the heading is more than 1 degree off its own, and none is taken until the heading has held 6 seconds, so the map is drawn live and rotates exactly with the heading, in v84 as in v81.
-   - So the jumps are not new: they come from the original heading design, unchanged since the first version (the code was never touched by builds v62 to v84): GPS is polled every 3 seconds, the last 5 headings are averaged, and the plane turns toward that target at a fixed 10 degrees a second (`TURN_RATE_DEG_PER_SEC` in `js/telemetry.js`). A 3-degree change is finished in 0.3 seconds and then waits for the next fix, so it looks like steps.
-   - One small side effect of the snapshot work, measured: at the very start of a turn the picture stays at its old heading until the heading is 1 degree off, then catches up in one frame, so the biggest single-frame rotation of the shown map went from 0.33 to 0.50 degrees. That is far too small to be what Jon sees.
-   - Idea (not spec'd): make the turn continuous by turning toward the target over about the length of a GPS poll instead of at a fixed 10 degrees a second, for example an easing with a time constant around 1.5 seconds. Trade-offs: the map direction lags the real heading by a second or two, and the plane's dead-reckoning direction follows the smoothed heading a little more slowly.
-   - Open questions for Jon: which earlier version looked smooth (and was it also Track-Up, or North-Up where only the plane icon turns); how fast the turn was; and whether a lag of a second or two behind the real heading is acceptable in exchange for continuous rotation.
+3. **Takeoff and landing cutscenes: the plane's size change is too abrupt, make it take 5 seconds:** requested by Jon, not yet specified. What it is today (`js/cutscene.js`): both cutscenes last 15 seconds in total. Takeoff: the plane grows from scale 1.0 to 4.0 only in the last 4 seconds (t=11 to 15, the moment the plane reaches 160 MPH, `CUTSCENE_LIFTOFF_SPEED`), on an ease-in curve that puts most of the growth in the last second or so. Landing: scale shrinks from 4.0 to 1.1 linearly over the first 4 seconds, holds at 1.1 for half a second, then shrinks 1.1 to 1.0 in the half second before touchdown at t=5; the runway appears when the scale crosses 1.5 (about 3.45 s). Decisions needed from Jon: (a) landing: I suggest one continuous curve from 4.0 to 1.0 over exactly 5 seconds (t=0 to 5, touchdown still at 5), which drops the half-second hold at 1.1 and moves the runway's appearance (scale 1.5) to about 4.2 s; (b) takeoff: the growth cannot be 5 seconds inside the current 15 if it starts at the 160 MPH moment (t=11), so either the growth starts at t=10 (the plane would then lift off at 144 MPH, not 160) or the takeoff cutscene becomes 16 seconds long with growth from t=11 to 16 (my suggestion, the 160 MPH liftoff stays); (c) whether the growth keeps its ease-in curve or goes linear/eased evenly over the 5 seconds; (d) whether the plane's movement (the landing's approach drift, the takeoff's exit off the right edge) should stretch with it so they still finish together.
+4. **Airport popup: the plane is far too big next to the runways, shrink it to the main screen's size:** requested by Jon, not yet specified. What it is today: the popup draws the plane at 50 px on the ground and 100 px in the air (`AIRPORT_POPUP_PLANE_PX` = 50, doubled when airborne, Build Log 22), and the Follow view draws the runway 60 px wide. The main screen draws the plane at 26 px at its default size (1x; tapping it enlarges it to 2x or 3x). Jon: use the main screen's size "initially", which I read as 26 px on the ground. Conflict to settle: Build Log 22 was built so the plane is larger than the runway while airborne; 2x of 26 is 52 px, narrower than the 60 px runway, so that effect would be lost. Options: keep the airborne size at 2x (52 px) and accept it, or make the airborne size larger (3x is 78 px, wider than the runway), or something else Jon prefers. Also to settle: whether the popup should follow the main screen's tap-resizing (1x, 2x, 3x) or stay fixed at 26 px, and whether this was about the Follow view, the Overview, or both.
