@@ -480,8 +480,8 @@ The change (`js/telemetry.js`, plus a field or two in `js/state.js`):
   fix comes, the rate is recalculated from the remaining distance.
 - Keep the existing 10 degrees a second as the fastest turn allowed, so a large
   change (for example the first fix at start-up, or swinging 90 degrees) still
-  turns at the same speed as today instead of snapping in 3 seconds. **To be
-  confirmed by Jon.**
+  turns at the same speed as today instead of snapping in 3 seconds (confirmed
+  by Jon).
 - Left alone: how GPS headings are averaged (last 5, vector average), the
   GPS polling, the "below 2 knots the heading is frozen" rule, the
   Track-Up snapshot code and its 1 degree tolerance, the cutscenes and the
@@ -498,6 +498,50 @@ within 3 seconds, wraps correctly through 0/360, a 90-degree change still
 turns at no more than 10 degrees a second, frozen heading below 2 knots
 unchanged, Track-Up snapshot behavior unchanged (the earlier suites), then
 the version check and the live site.
+
+### 3. Airport popup (runway detail screen): smaller plane, and a 5-second size change
+**Not yet authorized to build.** Would ship as the next free version number
+after items 1 and 2 (v87 if they go first); every `?v=` number in `index.html`
+changes to it. Requested by Jon. His first message called it the takeoff and
+landing "plane scale changes"; he then clarified it is the airport popup's
+runway detail screen, not the cutscenes (the cutscenes are not touched by
+this item).
+
+What Jon sees: in the whole-airport (Overview) view of the runways the plane
+looks about 160 pixels in a screenshot and each runway about 10 pixels, so the
+plane is far too big next to the runways; and the plane's size change when it
+takes off or lands (Build Log 22) is too abrupt.
+
+The change (`js/airport-popup.js` only, two constants):
+- **Plane size.** `AIRPORT_POPUP_PLANE_PX` goes from 50 to 26, the size of the
+  plane on the main screen at its default size (`26 * STATE.planeSizeMult` in
+  `js/live-layer.js`, with the multiplier at 1). It is fixed at 26 and does
+  not follow the main screen's tap-resizing (my default; say so if the popup
+  should follow it). The same size is used in Overview and Follow.
+- **Size change duration.** `AIRPORT_POPUP_AIRBORNE_DURATION_MS` goes from 1500
+  to 5000: when the plane crosses the 160 MPH (up) or 140 MPH (down) point,
+  its size eases to the other size over 5 seconds instead of 1.5 (same ease
+  curve; a reversal mid-ease still continues from the current size; opening
+  the popup still starts at the right size with no animation).
+- **Airborne size, to be confirmed by Jon.** `AIRPORT_POPUP_AIRBORNE_SCALE`
+  stays 2, so the airborne plane is 52 px (it was 100). That is narrower than the
+  60 px runway in the Follow view, so the "bigger than the runway while
+  airborne" effect from Build Log 22 would be gone in that view (in Overview
+  the runways are only a few pixels wide, so the plane is still much bigger).
+  Changing the scale to 3 would give 78 px, wider than that runway. Jon to
+  choose: 2 (52 px) or 3 (78 px) or another value.
+- Left alone: the 140 and 160 MPH thresholds and the hold in between, the
+  Overview/Follow camera, the runway sizes, the four runway-detection values,
+  the tap targets, the cutscenes and the main screen's plane.
+
+Test plan: headless Chromium at 412x915, plane size read from the popup
+canvas draw call with a fake clock: 26 px below 140 MPH, the airborne size
+above 160 MPH, hold in between per the previous state, the ease takes 5
+seconds with the midpoint at 2.5 seconds in both directions, a reversal
+mid-ease continues from the current size, starts at the right size on open,
+same in Overview and Follow; screenshots of the popup in both views before
+and after at phone size; the earlier suites (the airborne size test updated
+to the new numbers), the version check and the live site.
 
 ## Build Planner
 
@@ -547,5 +591,3 @@ Ideas and known gaps with no committed design yet. Resolved, built, dropped or s
    - Where it still fails: the first shot (18:19, GRR, 294 kt, Jon says above 10,000 ft) shows only the low source for at least 33 seconds (896 rising to 1,066 ft, about 300 ft a minute, which starts near the field's elevation and creeps up, which fits a cabin altitude, but that is also only a guess), and the app shows 1,050 ft. No high reading arrives in that stretch, so any rule that picks between sources has nothing to pick. This matches the earlier takeoff and descent complaint (about 800 ft when the captain says 10,000).
    - Idea: "take the higher": ignore a reading that is far below (for example more than 1,500 ft) the highest reading of the last 60 seconds, since cabin altitude is always below the real altitude. Fixes the flipping when both sources are present, but not the stretch where only the low one arrives. For that stretch the options are to show `--` (honest, but when would we know?), or hold the last high value for a while (wrong in a climb or descent), or leave it.
    - Open questions for Jon: was the first shot during the climb, and roughly how long did the low-only stretch last; does the low-only stretch happen mostly in climbs and descents; what he wants shown when only the low source is arriving; and whether the Altitude card should stay (the cruise values look right) or be replaced as discussed earlier.
-3. **Takeoff and landing cutscenes: the plane's size change is too abrupt, make it take 5 seconds:** requested by Jon, not yet specified. What it is today (`js/cutscene.js`): both cutscenes last 15 seconds in total. Takeoff: the plane grows from scale 1.0 to 4.0 only in the last 4 seconds (t=11 to 15, the moment the plane reaches 160 MPH, `CUTSCENE_LIFTOFF_SPEED`), on an ease-in curve that puts most of the growth in the last second or so. Landing: scale shrinks from 4.0 to 1.1 linearly over the first 4 seconds, holds at 1.1 for half a second, then shrinks 1.1 to 1.0 in the half second before touchdown at t=5; the runway appears when the scale crosses 1.5 (about 3.45 s). Decisions needed from Jon: (a) landing: I suggest one continuous curve from 4.0 to 1.0 over exactly 5 seconds (t=0 to 5, touchdown still at 5), which drops the half-second hold at 1.1 and moves the runway's appearance (scale 1.5) to about 4.2 s; (b) takeoff: the growth cannot be 5 seconds inside the current 15 if it starts at the 160 MPH moment (t=11), so either the growth starts at t=10 (the plane would then lift off at 144 MPH, not 160) or the takeoff cutscene becomes 16 seconds long with growth from t=11 to 16 (my suggestion, the 160 MPH liftoff stays); (c) whether the growth keeps its ease-in curve or goes linear/eased evenly over the 5 seconds; (d) whether the plane's movement (the landing's approach drift, the takeoff's exit off the right edge) should stretch with it so they still finish together.
-4. **Airport popup: the plane is far too big next to the runways, shrink it to the main screen's size:** requested by Jon, not yet specified. What it is today: the popup draws the plane at 50 px on the ground and 100 px in the air (`AIRPORT_POPUP_PLANE_PX` = 50, doubled when airborne, Build Log 22), and the Follow view draws the runway 60 px wide. The main screen draws the plane at 26 px at its default size (1x; tapping it enlarges it to 2x or 3x). Jon: use the main screen's size "initially", which I read as 26 px on the ground. Conflict to settle: Build Log 22 was built so the plane is larger than the runway while airborne; 2x of 26 is 52 px, narrower than the 60 px runway, so that effect would be lost. Options: keep the airborne size at 2x (52 px) and accept it, or make the airborne size larger (3x is 78 px, wider than the runway), or something else Jon prefers. Also to settle: whether the popup should follow the main screen's tap-resizing (1x, 2x, 3x) or stay fixed at 26 px, and whether this was about the Follow view, the Overview, or both.
