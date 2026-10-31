@@ -30,6 +30,14 @@
             }
             select.appendChild(opt);
         });
+        // The Start Airport list (Settings) has the same airports, with "Not set" first.
+        const startSelect = document.getElementById('sel-start-airport');
+        sorted.forEach(ap => {
+            const opt = document.createElement('option');
+            opt.value = JSON.stringify({ lat: ap.lat, lon: ap.lon, name: ap.name });
+            opt.textContent = formatAirportDisplay(ap.name);
+            startSelect.appendChild(opt);
+        });
     }
 
     document.addEventListener("DOMContentLoaded", populateAirports);

@@ -22,14 +22,15 @@ const RULES = [
   [/^js\/live-layer\.js$/, ['test_slide', 'test_touch', 'test_plane', 'test_rotation']],
   [/^js\/telemetry\.js$/, ['test_turn']],
   [/^js\/(callouts|state)\.js$/, ['test_callouts']],
-  [/^js\/controls\.js$/, ['test_altrule', 'test_altdiag', 'test_dest', 'test_home', 'test_gps_btn']],
+  [/^(js\/progress\.js|js\/airports\.js|css\/styles\.css)$/, ['test_progress']],
+  [/^js\/controls\.js$/, ['test_progress', 'test_dest', 'test_home', 'test_gps_btn']],
   [/^js\/terminator\.js$/, ['test_marker']],
   [/^(sw\.js|js\/register-sw\.js|manifest\.webmanifest|icons\/)/, ['test_sw', 'test_install', 'test_buster']],
   [/^(css\/|fonts\/)/, ['test_fonts']],
   [/^js\/(loader|early-gps|cutscene)\.js$|^index\.html$/, ['test_startup_race']],
 ];
 const ALL = ['test_smoke', 'test_tapfix', 'test_plane', 'test_rotation', 'test_popup_x', 'test_slide', 'test_touch', 'test_turn', 'test_callouts',
-  'test_altrule', 'test_altdiag', 'test_dest', 'test_home', 'test_marker', 'test_gps_btn', 'test_fonts', 'test_sw', 'test_install',
+  'test_progress', 'test_dest', 'test_home', 'test_marker', 'test_gps_btn', 'test_fonts', 'test_sw', 'test_install',
   'test_buster', 'test_startup_race'];
 
 // --- version-number check: every file reference in index.html carries the same ?v= number
@@ -84,6 +85,7 @@ function runSuite(name) {
       let fail = lines.filter(l => /^FAIL/.test(l)).length + (/SOME FAILED/.test(out) ? 1 : 0);
       const race = /errors in (\d+) of (\d+) loads \| stuck loading screen in (\d+) of/.exec(out);
       if (race && (+race[1] > 0 || +race[3] > 0)) fail++;
+      if (/triggerUncaughtException|UnhandledPromiseRejection|ReferenceError|TypeError:|SyntaxError/.test(out)) fail++;   // the suite crashed part-way
       if (!pass && !race && !fail) fail = 1;          // the suite printed nothing: it crashed
       resolve({ name, secs: Math.round((Date.now() - s) / 1000), pass, fail, lines });
     });

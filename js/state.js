@@ -7,7 +7,6 @@
             turnTarget: null,        // the target heading the current turn was planned for (see turnTowardHeading)
             turnRateDegPerSec: 0,    // degrees per second the plane's heading is turning at toward that target
             speed: 460,
-            altitude: null // feet, median-smoothed over last 5 readings; null until a real GPS altitude has ever come in
         },
         target: {
             lat: 28.4281, // Default target: Orlando, FL
@@ -66,12 +65,8 @@
         gps: {
             recentHeadings: [],   // rolling buffer for vector-averaged heading
             recentSpeeds: [],     // rolling buffer for averaged speed
-            recentAltitudes: [],  // rolling buffer (last 5, {value, time}) for median-smoothed altitude, feet -- filtered by age (60s) before use, see onGPSSuccess
             targetHeading: null,  // smoothed heading GPS mode turns toward
             lastFixError: null,
-            lastAltitudeAcceptedTime: null, // when the shown altitude was last updated by 3 consistent readings
-            rawAltitudeLog: [],   // newest 30 raw fixes {t, ft, accM, kts} for the Settings altitude diagnostics (read-only logging)
-            lastAltitudeFixTime: null // timestamp of last fix that included valid (non-null) altitude -- i.e. a real 4-satellite 3D lock. Drives the altitude status light, separate from the general GPS fix dot since a fix can succeed without altitude.
         },
         toggles: {
             landmarks: false,

@@ -474,101 +474,25 @@ Built as spec'd in the Build Queue (item 1), after Jon asked to "build all" (wit
 - The quick check (`node tests/run.js`) passes: version check (25 references at 88), smoke, plane (39), rotation (10, new, added to `tests/`), popup close, Track-Up slide, touch, home marker and startup race; the airport tap suite passed in its quick form. The plane suite's main-screen expectation now includes the north offset. A new `tests/test_rotation.js` and its line in `tests/README.md` and `tests/run.js` are part of this build.
 - Not tested: a real phone. Jon, a popup screenshot at ATL or MCO would confirm it on the device.
 
+### Build Log 32 (completed): v89, altitude removed completely, and a trip-progress gauge card in its place
+Built as spec'd in the Build Queue (item 2), after Jon asked to "build all". Jon: "toss altitude, replace with something else more helpful"; everything removed; the replacement is a card like his picture (a plane in a two-thirds speedometer arc, percent of distance, remembering the start airport), with the start picked from a list only (no automatic detection, so a whole trip such as Honolulu to Orlando can be tracked across plane changes), saved for 24 hours; text "62%" with "complete".
+- [x] Removed (everything): the "~Altitude" card and its status dot and the "Altitude diagnostics" group in Settings (`index.html`); the lines that filled the card (`js/telemetry.js`); in `js/controls.js` the reading of `coords.altitude` and its accuracy, the raw log, the 3-consistent-readings rule and its constants, `shownAltitudeFt()` and the 60-second hold, `updateAltitudeDiag()`, the altitude status dot code and its timer; in `js/state.js` `plane.altitude` and the gps fields `recentAltitudes`, `lastAltitudeAcceptedTime`, `rawAltitudeLog`, `lastAltitudeFixTime`; and the tests `test_altrule.js` and `test_altdiag.js` (also out of `tests/run.js` and `tests/README.md`). A search of `index.html` and `js/` now finds the word only in the cutscene's `PLANE_TOP_ALTITUDE` (a screen position), one cutscene comment and one comment in `js/callouts.js` saying it never uses the phone's altitude. Build Logs 17 and 18 stay as history.
+- [x] `index.html`, `css/styles.css`: the Progress card takes the altitude card's place in the grid: label "Progress", an inline SVG gauge (a 240-degree arc open at the bottom: a muted track, a fill in the theme accent, a plane icon in the middle pointing right as in Jon's picture), the percent in the big value font and a small caption under it (`complete`, or `set start`, or `waiting`). It works in day and night mode (theme colors) and fits the 107 px card at 412 px wide (checked in screenshots).
+- [x] New `js/progress.js` (loaded after `callouts.js`, so the page now has 26 file references, all `?v=89`): percent = 1 minus (the plane's distance to the destination divided by the distance from the start to the destination), by `getDistance()`, held to 0 to 100; a start the same as the destination (under 1 NM apart) shows `--` and "waiting". The fill eases for 0.6 s. Tapping the card with no start set opens the Settings drawer and focuses the Start Airport list (my suggestion, accepted). Called every frame from `updateTelemetryUI()`; the page is only touched when the shown text changes.
+- [x] Start airport: a new "Start Airport (for Progress)" dropdown in Settings right under the destination (`autocomplete="off"`), "Not set" first, then the same airports, filled by `populateAirports()` in `js/airports.js`. Picking an airport sets the start at any time and it stays until changed; saved in `localStorage` (`stratosphere.tripStart`: airport name and the time picked) for 24 hours, restored on launch if under 24 hours old, dropped (dropdown back to "Not set", the saved copy removed) once older, also while the app stays open; picking again restarts the 24 hours; changing the destination recalculates from the same start.
+- [x] Left out, as spec'd: the other five cards, the destination dropdown, the cutscenes, the airport popup, the landmark callouts, the GPS status dot in the header.
+- [x] A test fix found along the way, in the tests folder only: `tests/test_buster.js` crashed in its last check (`V is not defined` inside a browser call) since Build Log 30, and the runner counted the suite as passing because it had already printed passes. Fixed (the version number is now passed in), and `tests/run.js` now counts a crash part-way (an uncaught error in the output) as a failure. `tests/test_turn.js`'s 10 degrees a second check now allows 10% for frame-time jitter (it measured 10.31 once).
+
+**Verification:** headless Chromium at 412x915.
+- New `tests/test_progress.js`, 23 checks: no altitude text left in the app's files and no card, dot or diagnostics group (the grid still has 6 cards, one of them Progress); with no start the card shows `--` and "set start" and tapping it opens Settings with the Start Airport list focused; the list has "Not set" plus all 128 airports (HNL and MCO among them); HNL to MCO at 0, 25, 50, 75 and 100 percent of the way along the great circle: the card says the right percent (within 1) and the arc length matches (within 2%); held to 0 and 100 beyond the ends; changing the destination to ATL halfway recalculates from the same start (52%); start equal to the destination shows `--` and "waiting"; the pick is saved with its time, restored after a reload, still there after 23 hours, ignored and cleared after 25 hours, dropped while the app is open after 25 hours, picking again restarts the 24 hours, "Not set" clears it; the gauge and its text fit inside the card in night and day mode; zero JS errors.
+- The quick check (`node tests/run.js`, 112 s): version check (26 references at 89), smoke, turn, callouts, progress, destination, home, "Use my current location", fonts and startup race all pass; the service worker, installability and version-number suites also pass. The full run (`--full`, 289 s) passes every suite (the turn check above was rechecked alone, 10 of 10).
+- Not tested: a real phone (the arc, plane icon and text were checked in headless screenshots at phone size); a real multi-leg trip.
+
 ## Build Queue
 
 Fully specified work that is waiting for a go-ahead. Items leave this list in the same commit that builds them.
 
-### 1. Remove altitude completely, and add a trip-progress gauge card in its place
-**Not yet authorized to build.** Would ship as the next free version number after
-item 1 (v89 if item 1 goes first); every `?v=` number in `index.html` changes to
-it. Requested by Jon: "toss altitude, replace with something else more helpful",
-answered "everything" to how much to remove, and asked for a card like the picture
-he sent (a plane icon inside a two-thirds speedometer-style arc, with big text
-and a small caption beside it; his picture says "51m remaining"), using the
-percent of the distance, not time, and remembering the start airport to work it
-out. Later he dropped the automatic start: the start airport is picked from a
-list only, so he can choose a whole trip's starting point (for example Honolulu,
-with Orlando as the destination all the way home) and watch the percent across
-every plane change, not just one flight. Items marked **to be confirmed** are my reading of what he left open.
-
-Why altitude goes: the phone delivers two different altitude series and flips
-between them with no warning, and never reports an accuracy (flight screenshots
-of 18:19 to 19:23: a low, slowly changing, often repeated value such as 8,534 ft
-three times or 6,010 three times, and a smooth GPS-like value such as 33,592 to
-33,920 ft; for 33 seconds only the low one arrived and the app showed 1,050 ft at
-294 kt). Cabin pressure was a guess, never confirmed.
-
-**Part 1, remove altitude** (everything, checked in the files):
-- `index.html`: the "~Altitude" card with its status dot (`val-altitude`,
-  `altitude-status-dot`) and the "Altitude diagnostics" group in Settings
-  (`alt-diag`).
-- `js/telemetry.js`: the lines that fill the card and reset it to `--`.
-- `js/controls.js`: the whole altitude block (about 50 lines): reading
-  `coords.altitude` and `altitudeAccuracy` in `onGPSSuccess()`, the 3-consistent-
-  readings rule and its constants, `shownAltitudeFt()` and the 60-second hold,
-  the raw log, `updateAltitudeDiag()` and its calls, the altitude status dot code.
-- `js/state.js`: `plane.altitude` and the gps fields `recentAltitudes`,
-  `lastAltitudeAcceptedTime`, `rawAltitudeLog`, `lastAltitudeFixTime`.
-- `tests/`: delete `test_altrule.js` and `test_altdiag.js`, and take them out of
-  `tests/run.js` and `tests/README.md`.
-- Not touched: the GPS status dot in the Flight Info header, the cutscene's
-  `PLANE_TOP_ALTITUDE` (a screen position, not altitude), and the landmark
-  callouts (they never used altitude). Build Log entries 17 and 18 stay as history.
-
-**Part 2, the trip-progress gauge card** (takes the altitude card's place in the
-3x2 grid, same slot):
-- Look, like Jon's picture: a plane icon in the middle of an arc that covers
-  two thirds of a circle (240 degrees) and is open at the bottom; a dark track
-  with a bright filled part from the lower left, clockwise, whose length is the
-  percent complete; big text to the right and a small caption under it. Colors
-  from the app's theme variables (the accent for the fill, the muted color for the
-  track) so day and night modes both work; the plane is a simple inline SVG
-  icon, not the emoji. The card label is "Progress". At 0% the arc is empty, at
-  100% full; the fill eases between values (about 0.6 s). Sized to fit the grid
-  card at 412 px wide, checked in a screenshot.
-- Text: big "62%" with the small caption "complete" (confirmed by Jon; his
-  picture shows time remaining, he asked for percent of distance).
-- The math: percent = 1 minus (distance from the plane to the destination
-  divided by the distance from the start point to the destination), using the
-  app's own `getDistance()` (great-circle), limited to 0 to 100.
-- **The start point** ("remember the start airport"): picked by hand from a list,
-  nothing is detected automatically (Jon's decision):
-  - A new "Start Airport" dropdown in the Settings drawer, right under "Select
-    Destination Airport", with the same airports and a first entry "Not set".
-    Choosing an airport makes its coordinates the start point, at any time, in the
-    air or on the ground, and it stays until it is changed again. It gets
-    `autocomplete="off"` like the destination dropdown (Build Log 16).
-  - Saved for 24 hours (Jon's choice) in `localStorage` (a new key: the airport
-    name and the time it was picked), so it survives a reload or the app being
-    discarded in flight; after 24 hours it is ignored and the dropdown goes back to
-    "Not set". Picking again restarts the 24 hours.
-  - The gauge measures from the picked start to the selected destination, so for
-    a multi-leg trip the start is the first airport and the destination stays on
-    the final one; the "En route to" readout and route line follow the destination
-    as they do today. The percent is straight-line (great-circle), so it can dip a
-    little if a leg heads slightly away from the destination.
-  - With no start set (nothing picked, or it expired): the card shows `--` with
-    the small caption "set start", and tapping it opens the Settings drawer and
-    focuses the Start Airport dropdown (**the tap behavior is my suggestion, to be
-    confirmed**). The gauge starts counting as soon as an airport is picked.
-- If the destination is changed in flight (confirmed by Jon): the percent is
-  recalculated from the same start point to the new destination (it can jump).
-- Left alone: the other five cards, the destination dropdown, the cutscenes, the
-  airport popup and everything else.
-
-Test plan: headless Chromium at 412x915. Removal: no altitude card, dot,
-diagnostics group or altitude code left (searching the files; the two named
-exceptions only), the grid still shows six cards, the smoke test and the other
-suites pass. Gauge: the percent is right at the start (0), half way (50), at the
-destination (100) and beyond either end (clamped), the arc length matches,
-the Start Airport dropdown lists the airports, picking one sets the start and the
-percent at once (for example HNL with MCO as the destination, then points along the
-way), a reload restores the pick and it is still there 23 hours later but ignored
-25 hours later (clock faked), picking again restarts the 24 hours, with no
-start the card shows `--` and "set start" and tapping it opens Settings at the
-dropdown, changing the destination recalculates, day and night colors, screenshots of
-the card in both modes at phone size; then the quick check, the version check
-and the live site.
+_Empty — nothing queued right now._
 
 ## Build Planner
 

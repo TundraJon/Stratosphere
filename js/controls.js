@@ -262,24 +262,6 @@
 
         let instHeading = (pos.coords.heading != null && !isNaN(pos.coords.heading)) ? pos.coords.heading : null;
         let instSpeedKts = (pos.coords.speed != null && !isNaN(pos.coords.speed)) ? pos.coords.speed * 1.94384 : null;
-        // No fallback exists for altitude (unlike heading/speed, it can't be
-        // derived from position deltas) -- if this fix doesn't have it,
-        // recentAltitudes/STATE.plane.altitude are simply left untouched
-        // below, which is exactly the "freeze at last known value" behavior.
-        const instAltitudeFt = (pos.coords.altitude != null && !isNaN(pos.coords.altitude)) ? pos.coords.altitude * 3.28084 : null;
-
-        // Read-only log of the raw numbers the phone reports, for the Settings
-        // altitude diagnostics (see updateAltitudeDiag). Does not feed any
-        // calculation. Speed here is the device-reported value only, before
-        // any computed fallback below.
-        STATE.gps.rawAltitudeLog.push({
-            t: Date.now(),
-            ft: instAltitudeFt,
-            accM: (pos.coords.altitudeAccuracy != null && !isNaN(pos.coords.altitudeAccuracy)) ? pos.coords.altitudeAccuracy : null,
-            kts: instSpeedKts
-        });
-        if (STATE.gps.rawAltitudeLog.length > 30) STATE.gps.rawAltitudeLog.shift();
-
         // Fall back to computing heading/speed from the change since the last
         // fix, if the device didn't report them directly.
         if (lastGpsFix) {
@@ -311,12 +293,6 @@
             STATE.gps.recentSpeeds.push(instSpeedKts);
             if (STATE.gps.recentSpeeds.length > 5) STATE.gps.recentSpeeds.shift();
         }
-        if (instAltitudeFt !== null) {
-            STATE.gps.recentAltitudes.push({ value: instAltitudeFt, time: Date.now() });
-            if (STATE.gps.recentAltitudes.length > 5) STATE.gps.recentAltitudes.shift();
-            STATE.gps.lastAltitudeFixTime = Date.now();
-        }
-
         // Vector-average heading so wraparound (359deg/1deg) averages correctly
         if (STATE.gps.recentHeadings.length > 0) {
             let sumX = 0, sumY = 0;
@@ -326,27 +302,6 @@
                 sumY += Math.sin(r);
             });
             STATE.gps.targetHeading = (Math.atan2(sumY, sumX) * 180 / Math.PI + 360) % 360;
-        }
-
-        // An altitude change is accepted only when the 3 newest readings (each
-        // under 60s old) are consistent: each step between neighbors is at most
-        // ALTITUDE_CONSISTENCY_FT. The shown value is then the median of those
-        // 3. Anything else leaves the shown value alone (hold), so a single
-        // spike, or a source that flips between two very different values,
-        // never reaches the screen. A steady climb passes (a 3,000ft/min climb
-        // is 150ft per 3s poll); a limit on the total spread of the 3 would
-        // freeze the display in normal climbs. shownAltitudeFt() goes back to
-        // "--" if nothing has been accepted for 60s.
-        const ALTITUDE_MAX_AGE_MS = 60000;
-        const ALTITUDE_CONSISTENCY_FT = 300;
-        const freshAltitudes = STATE.gps.recentAltitudes.filter(r => Date.now() - r.time <= ALTITUDE_MAX_AGE_MS);
-        if (freshAltitudes.length >= 3) {
-            const last3 = freshAltitudes.slice(-3).map(r => Math.round(r.value)); // whole feet, so the feet-meters-feet conversion can't push a step just over the limit
-            if (Math.abs(last3[1] - last3[0]) <= ALTITUDE_CONSISTENCY_FT && Math.abs(last3[2] - last3[1]) <= ALTITUDE_CONSISTENCY_FT) {
-                const sorted = last3.slice().sort((x, y) => x - y);
-                STATE.plane.altitude = Math.round(sorted[1]);
-                STATE.gps.lastAltitudeAcceptedTime = Date.now();
-            }
         }
 
         if (STATE.gps.recentSpeeds.length > 0) {
@@ -374,8 +329,6 @@
         lastGpsFix = { lat: newLat, lon: newLon, time: now };
         STATE.gps.lastFixError = null;
         updateGpsStatusDot();
-        updateAltitudeStatusDot();
-        updateAltitudeDiag();
     }
 
     function onGPSError(err) {
@@ -385,7 +338,6 @@
         STATE.gps.lastFixError = err ? err.message : "Unknown GPS error";
         console.warn("GPS fix failed, continuing on dead-reckoning:", STATE.gps.lastFixError);
         updateGpsStatusDot();
-        updateAltitudeStatusDot();
     }
 
     // GPS status indicator: 🟢 recent fix, 🟡 aging fix, 🔴 no fix / error.
@@ -407,53 +359,6 @@
     function updateGpsStatusDot() {
         const el = document.getElementById('gps-status-dot');
         if (el) el.textContent = gpsStatusEmoji();
-    }
-
-    // Altitude validity light: 🟢 if a fix with valid (non-null) altitude --
-    // i.e. a real 4-satellite 3D lock -- arrived within the last 30s, 🔴
-    // otherwise. Deliberately simple 2-state (unlike the 3-tier general GPS
-    // dot above), and independent of it: a fix can succeed with good
-    // lat/lon but no altitude if the satellite geometry isn't good enough
-    // for a 3D fix, so this needs its own separate timestamp.
-    const ALTITUDE_STATUS_MAX_AGE_MS = 30000;
-    function altitudeStatusEmoji() {
-        if (!STATE.gps.lastAltitudeFixTime) return "🔴";
-        return (Date.now() - STATE.gps.lastAltitudeFixTime <= ALTITUDE_STATUS_MAX_AGE_MS) ? "🟢" : "🔴";
-    }
-    function updateAltitudeStatusDot() {
-        const el = document.getElementById('altitude-status-dot');
-        if (el) el.textContent = altitudeStatusEmoji();
-    }
-
-    // The altitude to show: the last accepted value, but only for 60s after it
-    // was accepted. After that it goes back to "--" instead of freezing on a
-    // stale number.
-    const ALTITUDE_HOLD_MS = 60000;
-    function shownAltitudeFt() {
-        if (STATE.plane.altitude === null || STATE.gps.lastAltitudeAcceptedTime === null) return null;
-        return (Date.now() - STATE.gps.lastAltitudeAcceptedTime <= ALTITUDE_HOLD_MS) ? STATE.plane.altitude : null;
-    }
-
-    // Settings > Altitude diagnostics: what the app is showing, plus the
-    // newest 12 raw readings exactly as the phone reported them, so a flight
-    // can show whether the altitude comes from more than one source. Read-only.
-    function updateAltitudeDiag() {
-        const el = document.getElementById('alt-diag');
-        if (!el) return;
-        const fresh = STATE.gps.recentAltitudes.filter(r => Date.now() - r.time <= 60000).length; // same 60s window as the median
-        const shownAlt = shownAltitudeFt();
-        const shown = shownAlt !== null ? shownAlt.toLocaleString() + ' ft' : '--';
-        const pad2 = n => String(n).padStart(2, '0');
-        const lines = ['Shown: ' + shown + '   fresh readings: ' + fresh];
-        STATE.gps.rawAltitudeLog.slice(-12).reverse().forEach(r => {
-            const d = new Date(r.t);
-            const time = pad2(d.getHours()) + ':' + pad2(d.getMinutes()) + ':' + pad2(d.getSeconds());
-            const alt = r.ft === null ? 'no altitude' : Math.round(r.ft).toLocaleString() + ' ft';
-            const acc = '±' + (r.accM === null ? '--' : Math.round(r.accM)) + ' m';
-            const kts = (r.kts === null ? '--' : Math.round(r.kts)) + ' kt';
-            lines.push(time + '  ' + alt.padStart(11) + '  ' + acc.padEnd(7) + '  ' + kts);
-        });
-        el.textContent = lines.join('\n');
     }
 
     // Real single-point sun-elevation check -- same math the terminator
@@ -511,11 +416,7 @@
     STATE.gps.recentHeadings = [];
     STATE.gps.recentSpeeds = [];
     STATE.gps.targetHeading = null;
-    STATE.gps.lastAltitudeFixTime = null;
     fetchGPSPosition();
     gpsIntervalId = setInterval(fetchGPSPosition, 3000);
     updateGpsStatusDot();
     setInterval(updateGpsStatusDot, 2000);
-    updateAltitudeStatusDot();
-    updateAltitudeDiag();
-    setInterval(updateAltitudeStatusDot, 2000);

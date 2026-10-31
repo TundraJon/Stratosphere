@@ -181,6 +181,34 @@
             flex-direction: column;
         }
 
+        /* Progress gauge card (js/progress.js) */
+        .progress-row {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            cursor: pointer;
+        }
+        #progress-gauge { flex: 0 0 auto; }
+        #progress-gauge circle {
+            fill: none;
+            stroke-width: 4.5;
+            stroke-linecap: round;
+        }
+        #progress-gauge .gauge-track { stroke: var(--text-muted); opacity: 0.3; }
+        #progress-gauge .gauge-fill {
+            stroke: var(--accent);
+            transition: stroke-dasharray 0.6s ease;
+        }
+        #progress-gauge .gauge-plane { fill: var(--value-color); }
+        .progress-text { display: flex; flex-direction: column; min-width: 0; }
+        .progress-caption {
+            font-size: 9px;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            white-space: nowrap;
+        }
+
         .telemetry-label {
             font-size: 9px;
             color: var(--text-muted);

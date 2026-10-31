@@ -26,7 +26,7 @@ The goal is 5 minutes at the very most per build, so: quick check for ordinary b
 | `test_touch` | no snapshot or cache while a finger (or mouse button) is down, 1 second wait, North-Up cache |
 | `test_turn` | smooth heading turns (3 seconds), 10 degrees a second cap, wraparound, frozen heading below 2 knots |
 | `test_callouts` | landmark callouts: classes, distances, side wording, day/night and twilight, speed floor, queue, banner timing, the Grand Canyon line, setting |
-| `test_altrule`, `test_altdiag` | the "3 consistent readings" altitude rule and the altitude diagnostics readout |
+| `test_progress` | altitude is gone; the Progress gauge card: percent math, arc, Start Airport list, 24-hour save, destination change, "set start" tap |
 | `test_dest`, `test_home`, `test_marker`, `test_gps_btn` | remembering the destination and the home location, the home marker, "Use my current location" |
 | `test_fonts` | fonts are served from the site, no Google requests |
 | `test_sw`, `test_install`, `test_buster` | offline cache (service worker), installability, the `?v=` version number refreshing files |

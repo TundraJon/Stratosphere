@@ -94,7 +94,7 @@ const geo = fs.readFileSync(root + '/js/geodesy.js', 'utf8');
   for (let i = 0; i < 40; i++) { const n = await t.page.evaluate(async () => (await (await caches.open('stratosphere-cache-v1')).keys()).length); if (n >= 24) break; await sleep(250); }
   srv.overrides['index.html'] = withV(V + 1); srv.mode = 'hang'; srv.delay = 4500;
   await t.page.reload(); await ready(t.page, 15000); await sleep(5200);      // the late page answer is saved in the background
-  const cachedHtml = await t.page.evaluate(async () => { const r = await (await caches.open('stratosphere-cache-v1')).match(location.origin + '/'); return r ? (await r.text()).includes('?v=' + (V + 1)) : null; });
+  const cachedHtml = await t.page.evaluate(async (next) => { const r = await (await caches.open('stratosphere-cache-v1')).match(location.origin + '/'); return r ? (await r.text()).includes('?v=' + next) : null; }, V + 1);
   srv.mode = 'down'; await t.page.reload(); const up = await ready(t.page, 15000); await sleep(3000);
   const ld = await t.page.evaluate(() => ({ faded: getComputedStyle(document.getElementById('loader-overlay')).opacity === '0', ver: [...document.scripts].map(s => s.src).filter(s => s.includes('geodesy')).join() }));
   ok('T5 saved page now asks for ?v=' + (V + 1) + ' files that are not saved, server down: the app still loads from the older saved files', cachedHtml === true && up && ld.faded && t.errors.length === 0, `html has v81: ${cachedHtml}, ready ${up}, ${ld.ver}, errors: ${t.errors.join('|')}`);

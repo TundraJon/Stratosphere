@@ -4,13 +4,13 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Stratosphere - Mobile Flight Tracker</title>
-    <link rel="manifest" href="manifest.webmanifest?v=88">
+    <link rel="manifest" href="manifest.webmanifest?v=89">
     <meta name="theme-color" content="#0d0e12">
-    <link rel="icon" href="favicon.ico?v=88" sizes="any">
-    <link rel="apple-touch-icon" href="icons/apple-touch-icon-180.png?v=88">
+    <link rel="icon" href="favicon.ico?v=89" sizes="any">
+    <link rel="apple-touch-icon" href="icons/apple-touch-icon-180.png?v=89">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-title" content="Stratosphere">
-    <link rel="stylesheet" href="css/styles.css?v=88">
+    <link rel="stylesheet" href="css/styles.css?v=89">
 
 </head>
 <body>
@@ -27,8 +27,8 @@
     </div>
 </div>
 
-<script src="js/early-gps.js?v=88"></script>
-<script src="js/loader.js?v=88"></script>
+<script src="js/early-gps.js?v=89"></script>
+<script src="js/loader.js?v=89"></script>
 
 <div id="app-container">
     <canvas id="map-canvas"></canvas>
@@ -89,12 +89,20 @@
                     <span class="telemetry-label">Longitude</span>
                     <span class="telemetry-value" id="val-lon">00.0000°</span>
                 </div>
-                <div class="telemetry-card">
-                    <div style="display: flex; align-items: center;">
-                        <span class="telemetry-label">~Altitude</span>
-                        <span id="altitude-status-dot" title="Altitude fix status (4-satellite 3D lock within last 30s)" style="font-size: 11px; margin-left: 4px;">🔴</span>
+                <div class="telemetry-card" id="progress-card" onclick="onProgressCardTap()">
+                    <span class="telemetry-label">Progress</span>
+                    <div class="progress-row">
+                        <!-- Trip progress gauge: a 240 degree arc open at the bottom (see js/progress.js) -->
+                        <svg id="progress-gauge" width="44" height="44" viewBox="0 0 44 44" aria-hidden="true">
+                            <circle class="gauge-track" cx="22" cy="22" r="18" transform="rotate(150 22 22)"></circle>
+                            <circle class="gauge-fill" id="progress-fill" cx="22" cy="22" r="18" transform="rotate(150 22 22)"></circle>
+                            <path class="gauge-plane" transform="translate(22 22) rotate(90) scale(0.62) translate(-12 -12)" d="M21 16v-2l-8-5V3.5c0-.83-.67-1.5-1.5-1.5S10 2.67 10 3.5V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5l8 2.5z"></path>
+                        </svg>
+                        <div class="progress-text">
+                            <span class="telemetry-value" id="val-progress">--</span>
+                            <span class="progress-caption" id="lbl-progress">set start</span>
+                        </div>
                     </div>
-                    <span class="telemetry-value" id="val-altitude">--</span>
                 </div>
             </div>
         </div>
@@ -111,6 +119,14 @@
                 <label class="input-label">Select Destination Airport</label>
                 <select id="sel-airport" autocomplete="off" onchange="handleAirportSelect()">
                     <!-- Populated dynamically in Part 2 -->
+                </select>
+            </div>
+
+            <div class="input-group" style="margin-top: 8px;">
+                <label class="input-label">Start Airport (for Progress)</label>
+                <select id="sel-start-airport" autocomplete="off" onchange="handleStartAirportSelect()">
+                    <option value="">Not set</option>
+                    <!-- Populated dynamically by populateAirports() in js/airports.js -->
                 </select>
             </div>
 
@@ -155,11 +171,6 @@
                     <input type="date" id="input-seasonal-date" class="btn" style="text-align:center;" onchange="handleSeasonalDateOverride()">
                     <button id="btn-seasonal-date-reset" class="btn" onclick="resetSeasonalDate()">Today</button>
                 </div>
-            </div>
-
-            <div class="input-group" style="margin-top: 8px;">
-                <label class="input-label">Altitude diagnostics</label>
-                <div id="alt-diag" style="font: 10px/1.5 monospace; color: var(--text-muted); white-space: pre; overflow-x: auto;"></div>
             </div>
 
             <div class="input-group" style="margin-top: 8px;">
@@ -213,24 +224,25 @@
     </div>
 </div>
 
-<script src="js/drawers.js?v=88"></script>
-<script src="js/state.js?v=88"></script>
-<script src="js/data/map-data.js?v=88"></script>
-<script src="js/data/airport-data.js?v=88"></script>
-<script src="js/airports.js?v=88"></script>
-<script src="js/projection.js?v=88"></script>
-<script src="js/canvas.js?v=88"></script>
-<script src="js/seasonal.js?v=88"></script>
-<script src="js/touch.js?v=88"></script>
-<script src="js/airport-popup.js?v=88"></script>
-<script src="js/geodesy.js?v=88"></script>
-<script src="js/render-loop.js?v=88"></script>
-<script src="js/terminator.js?v=88"></script>
-<script src="js/live-layer.js?v=88"></script>
-<script src="js/telemetry.js?v=88"></script>
-<script src="js/cutscene.js?v=88"></script>
-<script src="js/controls.js?v=88"></script>
-<script src="js/callouts.js?v=88"></script>
-<script src="js/register-sw.js?v=88"></script>
+<script src="js/drawers.js?v=89"></script>
+<script src="js/state.js?v=89"></script>
+<script src="js/data/map-data.js?v=89"></script>
+<script src="js/data/airport-data.js?v=89"></script>
+<script src="js/airports.js?v=89"></script>
+<script src="js/projection.js?v=89"></script>
+<script src="js/canvas.js?v=89"></script>
+<script src="js/seasonal.js?v=89"></script>
+<script src="js/touch.js?v=89"></script>
+<script src="js/airport-popup.js?v=89"></script>
+<script src="js/geodesy.js?v=89"></script>
+<script src="js/render-loop.js?v=89"></script>
+<script src="js/terminator.js?v=89"></script>
+<script src="js/live-layer.js?v=89"></script>
+<script src="js/telemetry.js?v=89"></script>
+<script src="js/cutscene.js?v=89"></script>
+<script src="js/controls.js?v=89"></script>
+<script src="js/callouts.js?v=89"></script>
+<script src="js/progress.js?v=89"></script>
+<script src="js/register-sw.js?v=89"></script>
 </body>
 </html>

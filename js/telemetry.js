@@ -13,7 +13,7 @@
             document.getElementById('val-dist').textContent = "--";
             document.getElementById('val-lat').textContent = "--";
             document.getElementById('val-lon').textContent = "--";
-            document.getElementById('val-altitude').textContent = "--";
+            updateProgressCard(null);
             document.getElementById('val-eta').textContent = "--:--";
             document.getElementById('val-ete').textContent = "--h --m";
             return;
@@ -53,9 +53,7 @@
         document.getElementById('val-dist').textContent = `${Math.round(dist)} NM`;
         document.getElementById('val-lat').textContent = `${STATE.plane.lat.toFixed(4)}°N`;
         document.getElementById('val-lon').textContent = `${STATE.plane.lon.toFixed(4)}°E`;
-        const shownAlt = shownAltitudeFt();
-        document.getElementById('val-altitude').textContent = shownAlt !== null
-            ? `${shownAlt.toLocaleString()} ft` : "--";
+        updateProgressCard(dist);
         document.getElementById('val-eta').textContent = etaString;
         document.getElementById('val-ete').textContent = hasValidEte ? `${hours}h ${mins}m` : "--h --m";
     }
