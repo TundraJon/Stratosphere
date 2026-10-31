@@ -38,6 +38,31 @@
     document.addEventListener("DOMContentLoaded", () => window.addEventListener('resize', resizeCanvas));
     document.addEventListener("DOMContentLoaded", resizeCanvas);
 
+    // --- PLANE ICON (the ✈️ emoji), shared by the main screen and the airport popup ---
+    // The emoji's visible shape is not centered on the point it is drawn at,
+    // and its own nose points a little off the 48 degrees this app used to
+    // assume. These numbers were measured from the rendered glyph (as a share
+    // of the font size): the visible center sits 0.0594 to the right of and
+    // 0.1287 above the draw point; its axis (found by mirror symmetry) points
+    // 44.5 degrees clockwise from north; its wingspan is 1.407 times the font
+    // size. drawPlaneGlyph() shifts the glyph so its visible center is exactly
+    // on (x, y), and rotates it so its nose points along headingDeg.
+    const PLANE_GLYPH_CENTER_X_EM = 0.0594;
+    const PLANE_GLYPH_CENTER_Y_EM = -0.1287;
+    const PLANE_GLYPH_AXIS_DEG = 44.5;
+    const PLANE_GLYPH_WINGSPAN_EM = 1.407;
+
+    function drawPlaneGlyph(c, x, y, headingDeg, fontPx) {
+        c.save();
+        c.translate(x, y);
+        c.rotate((headingDeg - PLANE_GLYPH_AXIS_DEG) * Math.PI / 180);
+        c.font = `${fontPx}px sans-serif`;
+        c.textAlign = 'center';
+        c.textBaseline = 'middle';
+        c.fillText('✈️', -PLANE_GLYPH_CENTER_X_EM * fontPx, -PLANE_GLYPH_CENTER_Y_EM * fontPx);
+        c.restore();
+    }
+
     // --- LANDMASS BOUNDING BOX (for pan/zoom clamping) ---
     // Computed once from the actual mainland + Alaska + Hawaii coordinates,
     // so clamping is based on real data rather than guessed numbers.

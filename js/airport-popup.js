@@ -69,7 +69,14 @@
     // ============================================================
     const AIRPORT_POPUP_SPEED_THRESHOLD_MPH = 50; // off-runway AND above this = Overview; everything else = Follow
     const AIRPORT_POPUP_FOLLOW_RUNWAY_WIDTH_PX = 60;
-    const AIRPORT_POPUP_PLANE_PX = 50;
+    // Plane icon sizes (font size in px). In Follow the plane's wingtips are
+    // 50 px apart on the ground (5 px inside the 60 px runway on each side)
+    // and 100 px apart in the air (AIRPORT_POPUP_AIRBORNE_SCALE below); in
+    // Overview it is the main screen's 26 px whatever the speed. The sizes
+    // blend along with the camera. PLANE_GLYPH_WINGSPAN_EM is in canvas.js.
+    const AIRPORT_POPUP_PLANE_WINGSPAN_PX = 50;
+    const AIRPORT_POPUP_PLANE_PX = AIRPORT_POPUP_PLANE_WINGSPAN_PX / PLANE_GLYPH_WINGSPAN_EM;
+    const AIRPORT_POPUP_OVERVIEW_PLANE_PX = 26;
     const AIRPORT_POPUP_HEADING_ALIGN_DEG = 7; // "on this runway" requires heading within this many degrees of its real bidirectional orientation
     const AIRPORT_POPUP_LATERAL_MARGIN_FT = 60;  // GPS-noise allowance beyond the runway's real half-width, for "on runway" purposes
     const AIRPORT_POPUP_ALONG_TRACK_MARGIN_FT = 150; // allows touchdown/liftoff to register slightly before/after the painted threshold, not exactly at it
@@ -77,7 +84,7 @@
     const AIRPORT_POPUP_AIRBORNE_UP_MPH = 160;   // above this = in the air
     const AIRPORT_POPUP_AIRBORNE_DOWN_MPH = 140; // below this = on the ground; between the two the previous state holds
     const AIRPORT_POPUP_AIRBORNE_SCALE = 2;      // plane size multiplier while in the air
-    const AIRPORT_POPUP_AIRBORNE_DURATION_MS = 1500;
+    const AIRPORT_POPUP_AIRBORNE_DURATION_MS = 5000;
 
     function easeInOutCubic(t) {
         return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
@@ -465,17 +472,11 @@
         // --- Live plane overlay (in-frame) or off-screen edge indicator ---
         if (inFrame) {
             const planeScreen = toPopup(followTargetMapPos.x, followTargetMapPos.y);
-            ctx2.save();
-            ctx2.translate(planeScreen.x, planeScreen.y);
             // Always North-up in this popup (per explicit spec), so no
-            // Track-Up rotation term here -- just the plane's own heading,
-            // same calibration offset used on the main map.
-            ctx2.rotate((STATE.plane.hdg - 48) * Math.PI / 180);
-            ctx2.font = `${AIRPORT_POPUP_PLANE_PX * (1 + (AIRPORT_POPUP_AIRBORNE_SCALE - 1) * STATE.airportPopup.airborneBlend)}px sans-serif`;
-            ctx2.textAlign = 'center';
-            ctx2.textBaseline = 'middle';
-            ctx2.fillText('✈️', 0, 0);
-            ctx2.restore();
+            // Track-Up rotation term here -- just the plane's own heading.
+            const followPlanePx = AIRPORT_POPUP_PLANE_PX * (1 + (AIRPORT_POPUP_AIRBORNE_SCALE - 1) * STATE.airportPopup.airborneBlend);
+            const planePx = AIRPORT_POPUP_OVERVIEW_PLANE_PX + (followPlanePx - AIRPORT_POPUP_OVERVIEW_PLANE_PX) * STATE.airportPopup.cameraBlend;
+            drawPlaneGlyph(ctx2, planeScreen.x, planeScreen.y, STATE.plane.hdg, planePx);
         } else if (lastGpsFix !== null) {
             // Off-screen: arrow at the point where the true bearing line
             // (airport center -> plane) crosses the popup's edge, pointing

@@ -431,84 +431,28 @@ Built as spec'd in the Build Queue (item 2), after Jon asked to "build all". Jon
 - The earlier suites were rerun (version buster shifted to 86): offline cache, home, home marker, use-my-location, fonts, installable, popup close, destination save, startup race (0 of 30 loads), version buster, airborne size, Track-Up slide, altitude, landmark callouts and the finger/1-second suite all pass. The auto-open (v79) test still has its one failing check about my stale scratch comparison folder, not the product. The full run was stopped by its 30-minute limit before its last two tests (the airport tap suite and the new turn test); the turn test was run on its own against this build (11 of 11 pass), and the tap suite was not rerun for this build because `js/touch.js` is not touched by it (it passed on v85).
 - Not tested: a real phone and a real turn; the lag (about 1.5 s on average at 3-degree steps) is as Jon accepted.
 
+### Build Log 29 (completed): v87, plane icon centered and rotated exactly (main screen and airport popup), popup sizes, 5-second size change
+Built as spec'd in the Build Queue (item 3), after Jon asked to "build all". Jon's requests: the plane in the airport popup's Overview is at most 26 px; in Follow its wingtips are 50 px apart on the 60 px runway (5 px inside each edge) and 100 px apart (2x) in the air, changing over about 5 seconds; it must be exactly lined up with the runway ("looks as though it's sliding a little"), and the main screen's plane fixed the same way because it still looked a little off against the route line.
+- [x] The cause, measured from the rendered ✈️ glyph: its visible center is not at the point it is drawn at (0.0594 of the font size to the right and 0.1287 above), and the plane was rotated around that off-center point, so it swung off its position as it turned (about 10 to 12 px at a 78 px size) and the route line, which starts at the real position, did not meet it; and its own axis points 44.5 degrees from north (mirror symmetry 97%), not the 48 the code assumed (79%), so the plane was turned about 3.5 degrees too far. Its wingspan is 1.407 times the font size.
+- [x] `js/canvas.js`: new shared `drawPlaneGlyph(c, x, y, headingDeg, fontPx)` and four measured constants (`PLANE_GLYPH_CENTER_X_EM`, `PLANE_GLYPH_CENTER_Y_EM`, `PLANE_GLYPH_AXIS_DEG = 44.5`, `PLANE_GLYPH_WINGSPAN_EM = 1.407`). It shifts the glyph by minus its visible-center offset so the visible center is exactly on (x, y), and rotates it to point along the heading.
+- [x] `js/live-layer.js`: the main screen's plane now uses `drawPlaneGlyph()` (the `-48` calibration is gone): North-Up at the plane's projected screen position with its heading, Track-Up at the screen center pointing straight up, at 26 times the tap-resize multiplier (26, 52, 78 px) as before.
+- [x] `js/airport-popup.js`: the plane uses `drawPlaneGlyph()` too (the `- 48` is gone). Sizes: `AIRPORT_POPUP_PLANE_PX` is now derived from a 50 px wingspan (`AIRPORT_POPUP_PLANE_WINGSPAN_PX = 50`, a 35.5 px font), airborne is 2x that (a 100 px wingspan, 71.1 px font), and the new `AIRPORT_POPUP_OVERVIEW_PLANE_PX = 26` is the Overview size; the drawn size blends from 26 to the Follow size along with the existing camera blend (`cameraBlend`, the 0.5 s snap), so it is 26 px at any speed in Overview and back to 26 when the view returns to Overview. `AIRPORT_POPUP_AIRBORNE_DURATION_MS` is 5000 (was 1500; same ease, same 140 and 160 MPH hold-in-between rule).
+- [x] Left out, as spec'd: the Overview/Follow camera and its 0.5 s snap, runway sizes, the four runway-detection values, tap targets, and the cutscenes' own plane (a separate picture). The rotation constant (44.5) comes from the emoji font in my test browser, which is the same Noto design as on Jon's phone; **a screenshot from Jon's phone of the popup with the plane on a runway is the check** that it matches on the device.
+
+**Verification:** headless Chromium at 412x915; the plane's own pixels isolated by comparing the canvas before and after each plane draw; fake clock for the timings.
+- Pure glyph at 8 headings: the visible center is within 0.95% of the font size of the point (a measurement limit: pixels close to the background colour are not counted), the axis within 0.00 degrees of the heading, wingspan 1.42 times the font size.
+- Main screen, North-Up and Track-Up, 8 headings at the 78 px size: the glyph is drawn exactly at the plane's screen position; its visible center is within 1.43 px (North-Up) and 0.42 px (Track-Up) of it, measured against the map under it; its axis within 0.25 degrees of the heading (straight up in Track-Up); tap-resize sizes 26, 52 and 78. The old build's visible center was 9.6 to 12.1 px off at 78 px.
+- Airport popup on 12 clean runway spots at several headings (in both directions on 4 runways): the plane's center is within 0.92 px of the runway centerline; its axis within 0.50 degrees of the runway; the runway band measures 59 to 59.5 px and the plane's wingspan 49.9 to 50.2 px on the ground (so 4.9 to 5 px inside each edge) and 100.1 px in the air.
+- Sizes and timing: Overview 26 px at 300 MPH (airborne), wingspan about 36.6 px; the ease takes 5 seconds in both directions with its midpoint at 2.5 s; a reversal mid-ease continues from the current size; the popup opens at the right size with no animation at 300, 155 and 145 MPH; the 140/160 hold rule (hold at 150, nothing at exactly 140 or 160, no flicker at 159/161); leaving the runway for the Overview brings it back to 26 px.
+- Also run: the airport tap, finger/1-second, Track-Up slide, landmark callout, smooth turn, popup close, destination save and home marker suites, and the version check (25 references, all `?v=87`): all pass. Before the build, the older v81 size test (50 and 100 px, 1.5 s) was replaced by the new plane test, which covers everything it did plus the new numbers.
+- **Not rerun for this build** (they cannot be affected by changes to the plane drawing and the popup's constants, and each takes many minutes): the startup race loop, offline cache, fonts, installable, home persistence, use-my-location and altitude suites; their last full run was on v85/v86.
+- Not tested: a real phone. Please send a phone screenshot of the popup with the plane on a runway, and of the main screen, so the 44.5-degree rotation and the centering can be confirmed on the device.
+
 ## Build Queue
 
 Fully specified work that is waiting for a go-ahead. Items leave this list in the same commit that builds them.
 
-### 1. Plane icon: centered and rotated exactly (main screen and airport popup), popup sizes, 5-second size change
-**Not yet authorized to build.** Would ship as the next free version number
-after items 1 and 2 (v87 if they go first); every `?v=` number in `index.html`
-changes to it. Requested by Jon in several steps (the popup's takeoff and
-landing "plane scale changes" are the airport popup, not the cutscenes, which
-are not touched). It replaces the popup plane size from Build Log 22 (50 px on
-the ground, 100 px in the air, 1.5 s change) and fixes the main screen's plane
-the same way.
-
-What Jon wants:
-- **Overview (the whole airport with all runways): the plane is at most 26 px**,
-  the size of the main screen's plane (font size 26), whatever the speed. It
-  looked about 160 screenshot pixels against runways of about 10. When the view
-  goes back to Overview from a runway, the plane is back down to 26.
-- **Follow (the takeoff and landing close-up), on the 60 px runway: on the
-  ground the wingtips are 50 px apart, 5 px inside the runway edge on each
-  side. In the air the wingtips are 100 px apart.** The change between them
-  takes about 5 seconds.
-- **The plane is exactly lined up** with the runway in the popup, and "the
-  same way" on the main screen, where it still looks a little off against the
-  route line.
-
-What I measured (headless Chromium; the emoji is the same Noto design as on
-Jon's phone, checked against his screenshots): (1) the ✈️ glyph's visible center is not at the
-point it is drawn at: it sits 0.059 of the font size to the right and 0.129 above
-it, and the plane is rotated around that point, so its visible center swings
-around the real position (7 px at 50 px, 14 px at 100 px) as the heading
-changes; the route line starts at the real position, not at the visible plane,
-and in a runway screenshot the plane is off the centerline. (2) The glyph's own
-axis, found by mirror symmetry, points 44.5 degrees clockwise from north
-(symmetry 97%), not 48 (79%): the code's `PLANE_ROTATION_CALIBRATION` (`-48`
-in `js/live-layer.js`) and the `- 48` in `js/airport-popup.js` leave the plane
-turned about 3.5 degrees too far, which is visible against a runway or a line.
-(3) The wingspan is 1.407 times the font size, symmetric about the axis. So 50 px
-of wingspan is a 35.5 px font and 100 px is a 71.1 px font (exactly 2x).
-
-The change (`js/airport-popup.js` and `js/live-layer.js`):
-- One shared way of drawing the plane (a small function used by both): shifts
-  the glyph by minus its visible-center offset in its own frame so the visible
-  center sits exactly on the position (in the popup's Follow view, the snapped
-  runway centerline; on the main screen, the route line's start), and rotates
-  by the heading minus 44.5. Sizes are given as a font size; the measured
-  constants (0.059, 0.129, 44.5, 1.407) live in one place.
-- **Popup, Follow:** ground font 35.5 px (wingspan 50 px, 5 px inside the 60 px
-  runway on each side), airborne font 71.1 px (wingspan 100 px, exactly 2.0 times the
-  ground size and about 1.7 times the runway's 60 px; Jon confirmed he wants
-  2x the ground size, whatever that works out to). `AIRPORT_POPUP_PLANE_PX` becomes
-  35.5; `AIRPORT_POPUP_AIRBORNE_SCALE` stays 2.
-- **Popup, Overview:** new `AIRPORT_POPUP_OVERVIEW_PLANE_PX = 26`. The drawn size
-  blends from 26 to the Follow size along with the existing camera blend
-  (`cameraBlend`, the 0.5 s snap).
-- **Size change duration:** `AIRPORT_POPUP_AIRBORNE_DURATION_MS` 1500 to 5000
-  (same ease; a reversal mid-ease continues from the current size; opens at the
-  right size with no animation; the 140 and 160 MPH hold-in-between rule is
-  unchanged).
-- **Main screen:** the same centering and the 44.5 rotation, at 26 times the
-  existing tap-resize multiplier (1x, 2x, 3x), in North-Up and Track-Up. Size and
-  behavior otherwise unchanged. The tap target for resizing the plane is unchanged.
-- Left alone: the Overview/Follow camera and its 0.5 s snap, runway sizes, the four
-  runway-detection values, the cutscenes' own plane (a separate picture), and
-  the tap targets.
-
-Test plan: headless Chromium at 412x915, glyph pixels read back from the canvases,
-fake clock. Popup: Overview 26 px at any speed and the blend into Follow;
-Follow wingtip-to-tip 50 px on the ground and 100 px in the air; the 5-second
-ease (midpoint 2.5 s, both directions, reversal mid-ease); with the plane on a
-runway at 8 headings the plane's visible center is within 1 px of the runway
-centerline and its axis within 1 degree of the runway; no sideways movement during
-the size change. Main screen: in North-Up and Track-Up at several headings the
-visible center is within 1 px of where the route line starts and the axis is
-within 1 degree of the heading; tap-resizing still works. Screenshots before and
-after at phone size; then the earlier suites (the airborne size test updated to
-the new numbers), the version check and the live site. After the build, a screenshot
-from Jon's phone of the popup on a runway to confirm the 44.5-degree rotation on his device.
+_Empty — nothing queued right now._
 
 ## Build Planner
 

@@ -79,22 +79,15 @@
         // Nothing to point anywhere until we've had a real fix — the plane's
         // position/heading are just placeholder defaults until then.
         if (lastGpsFix !== null) {
-            ctx.save();
-            const PLANE_ROTATION_CALIBRATION = -48;
+            // In Track-Up the map is rotated under the plane, so the plane
+            // itself always points straight up (heading 0 on screen).
             if (STATE.view.trackUp) {
-                ctx.translate(w / 2 + STATE.view.offsetX, h / 2 + STATE.view.offsetY);
-                ctx.rotate(PLANE_ROTATION_CALIBRATION * Math.PI / 180);
+                drawPlaneGlyph(ctx, w / 2 + STATE.view.offsetX, h / 2 + STATE.view.offsetY, 0, 26 * STATE.planeSizeMult);
             } else {
                 const screenX = w / 2 + STATE.view.offsetX + planePos.x * STATE.view.zoom;
                 const screenY = h / 2 + STATE.view.offsetY + planePos.y * STATE.view.zoom;
-                ctx.translate(screenX, screenY);
-                ctx.rotate((STATE.plane.hdg + PLANE_ROTATION_CALIBRATION) * Math.PI / 180);
+                drawPlaneGlyph(ctx, screenX, screenY, STATE.plane.hdg, 26 * STATE.planeSizeMult);
             }
-            ctx.font = `${26 * STATE.planeSizeMult}px sans-serif`;
-            ctx.textAlign = "center";
-            ctx.textBaseline = "middle";
-            ctx.fillText("✈️", 0, 0);
-            ctx.restore();
         }
 
         // Update the absolute heading floating Compass Rose widget UI
