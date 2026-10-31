@@ -571,23 +571,34 @@ three times or 6,010 three times, and a smooth GPS-like value such as 33,592 to
   icon, not the emoji. The card label is "Progress". At 0% the arc is empty, at
   100% full; the fill eases between values (about 0.6 s). Sized to fit the grid
   card at 412 px wide, checked in a screenshot.
-- Text: big "62%" with the small caption "complete" (**to be confirmed**:
-  Jon's picture shows time remaining; he asked for percent of distance).
+- Text: big "62%" with the small caption "complete" (confirmed by Jon; his
+  picture shows time remaining, he asked for percent of distance).
 - The math: percent = 1 minus (distance from the plane to the destination
   divided by the distance from the start point to the destination), using the
   app's own `getDistance()` (great-circle), limited to 0 to 100.
-- **The start point** ("remember the start airport"): when a takeoff is seen
-  (speed was below 50 MPH and now goes above 70 MPH, the same numbers the
-  cutscene uses), take the plane's position and snap it to the nearest airport
-  in the app's list if one is within 5 NM (so it matches that airport's
-  coordinates and name), otherwise keep the raw position. Saved in
-  `localStorage` (a new key, with the position, the airport name if any and the
-  time) so it survives a reload or the app being discarded in flight, and ignored
-  after 24 hours. A new takeoff replaces it.
-- If the app is opened in flight with no saved start (**to be confirmed**):
-  the first GPS fix becomes the start, so the gauge counts from where the app was
-  opened; before any fix it shows `--` with an empty arc.
-- If the destination is changed in flight (**to be confirmed**): the percent is
+- **The start point** ("remember the start airport"), automatic with a pick
+  list as the backup (Jon's choice):
+  - Automatic: when a takeoff is seen (speed was below 50 MPH and now goes above
+    70 MPH, the same numbers the cutscene uses), take the plane's position and
+    snap it to the nearest airport in the app's list if one is within 5 NM (so it
+    matches that airport's coordinates and name), otherwise keep the raw
+    position. A new takeoff replaces whatever start was set before, including one
+    picked by hand.
+  - Pick list: a new "Start Airport" dropdown in the Settings drawer, right under
+    "Select Destination Airport", with the same airports and a first entry "Not
+    set". Choosing an airport makes it the start (its coordinates), at any time,
+    in the air or on the ground; it stays until the next takeoff is detected or
+    it is changed again. When the automatic start is found, the dropdown shows it.
+    It gets `autocomplete="off"` like the destination dropdown (Build Log 16).
+  - Saved in `localStorage` (a new key: the position, the airport name if any,
+    and the time) so it survives a reload or the app being discarded in flight,
+    and ignored after 24 hours.
+  - If the app is opened in flight with no saved start (Jon: "picklist"): the
+    card shows `--` with the small caption "set start", and tapping it opens the
+    Settings drawer and focuses the Start Airport dropdown (**the tap behavior is
+    my suggestion, to be confirmed**). The gauge starts counting as soon as an
+    airport is picked.
+- If the destination is changed in flight (confirmed by Jon): the percent is
   recalculated from the same start point to the new destination (it can jump).
 - Left alone: the other five cards, the destination dropdown, the cutscenes, the
   airport popup and everything else.
@@ -598,8 +609,11 @@ exceptions only), the grid still shows six cards, the smoke test and the other
 suites pass. Gauge: the percent is right at the start (0), half way (50), at the
 destination (100) and beyond either end (clamped), the arc length matches, takeoff
 detection saves the start (snapped to an airport within 5 NM and raw otherwise),
-reload restores it and 25 hours later ignores it, opening in flight uses the first
-fix, changing the destination recalculates, day and night colors, screenshots of
+reload restores it and 25 hours later ignores it, the Start Airport dropdown
+lists the airports, picking one sets the start and the percent at once, an
+automatic takeoff start replaces a picked one and updates the dropdown, with no
+start the card shows `--` and "set start" and tapping it opens Settings at the
+dropdown, changing the destination recalculates, day and night colors, screenshots of
 the card in both modes at phone size; then the quick check, the version check
 and the live site.
 
