@@ -28,6 +28,7 @@ const RULES = [
   [/^(sw\.js|js\/register-sw\.js|manifest\.webmanifest|icons\/)/, ['test_sw', 'test_install', 'test_buster']],
   [/^(css\/|fonts\/)/, ['test_fonts']],
   [/^js\/(loader|early-gps|cutscene)\.js$|^index\.html$/, ['test_startup_race']],
+  [/^index\.html$/, ['test_progress']],
 ];
 const ALL = ['test_smoke', 'test_tapfix', 'test_plane', 'test_rotation', 'test_popup_x', 'test_slide', 'test_touch', 'test_turn', 'test_callouts',
   'test_progress', 'test_dest', 'test_home', 'test_marker', 'test_gps_btn', 'test_fonts', 'test_sw', 'test_install',

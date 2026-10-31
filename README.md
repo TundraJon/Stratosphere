@@ -488,30 +488,19 @@ Built as spec'd in the Build Queue (item 2), after Jon asked to "build all". Jon
 - The quick check (`node tests/run.js`, 112 s): version check (26 references at 89), smoke, turn, callouts, progress, destination, home, "Use my current location", fonts and startup race all pass; the service worker, installability and version-number suites also pass. The full run (`--full`, 289 s) passes every suite (the turn check above was rechecked alone, 10 of 10).
 - Not tested: a real phone (the arc, plane icon and text were checked in headless screenshots at phone size); a real multi-leg trip.
 
+### Build Log 33 (completed): v90, the plane icon inside the Progress gauge is 50% bigger
+Built as spec'd in the Build Queue (item 1), after Jon said "build 1". Jon, seeing the gauge on his phone: the plane inside it needed to be about 50% bigger.
+- [x] `index.html`: the `gauge-plane` path's scale goes from 0.62 to 0.93 (exactly 1.5 times; about 15 px to about 22 px tall in the 44 px gauge), still centered and still pointing right. The arc's inner opening is about 31 px across, so it fits without touching the arc (checked in screenshots, night and day). All 26 `?v=` numbers are 90.
+- [x] `tests/test_progress.js` checks the plane's drawn scale is 0.93 and that it fits inside the arc opening, in night and day mode; `tests/run.js` now also runs the progress suite when `index.html` changes.
+- [x] Left out, as spec'd: the arc, its size and colors, the text, the card, everything else.
+
+**Verification:** `tests/test_progress.js` passes (25 of 25, including the two new checks); the quick check (version check, smoke, startup race) passes; screenshots of the card in night and day mode at phone size show the larger plane centered in the arc with clear room around it. Not tested: a real phone.
+
 ## Build Queue
 
 Fully specified work that is waiting for a go-ahead. Items leave this list in the same commit that builds them.
 
-### 1. Make the plane icon inside the Progress gauge about 50% bigger
-**Not yet authorized to build.** Would ship as v90 (every `?v=` number in
-`index.html` becomes 90). Requested by Jon after seeing the gauge on his phone.
-
-Today the plane inside the gauge (`index.html`, the `gauge-plane` path in the
-Progress card) is drawn at scale 0.62 of its 24-unit icon, about 15 px tall in the
-44 px gauge. The change: scale 0.62 becomes 0.93 (exactly 1.5 times), about 22 px,
-still centered and still pointing right. The arc's inner opening is about 31 px
-across (radius 18 minus half the 4.5 px stroke, times 2), so the bigger plane fits
-without touching the arc.
-
-Left alone: the arc, its size and colors, the text, the card, everything else.
-
-Test plan: `tests/test_progress.js` gets a check that the plane's drawn width is 1.5
-times the old one (about 15 px to about 22 px, measured from its bounding box) and
-that it stays inside the arc's opening with room to spare, in night and day mode;
-screenshots of the card in both modes at phone size; the quick check and the
-version check for `?v=90`; the live site.
-
-
+_Empty — nothing queued right now._
 
 ## Build Planner
 
