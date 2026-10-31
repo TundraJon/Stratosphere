@@ -463,7 +463,68 @@ Tests and docs only; no app file changed, so there is no version bump (the `?v=`
 
 Fully specified work that is waiting for a go-ahead. Items leave this list in the same commit that builds them.
 
-_Empty — nothing queued right now._
+### 1. Fix: the plane (and the Track-Up map) are turned by true heading, but the map's north is not straight up
+**Not yet authorized to build.** Would ship as v88 (every `?v=` number in
+`index.html` becomes 88). Found from Jon's three phone screenshots of the
+airport popup (ATL at 22 kt, MCO at 139 kt and at 73 kt), sent without text
+after I asked for them.
+
+What the screenshots show (measured on the images, about 2.24 screenshot pixels
+per CSS pixel): the sizes and centering from Build Log 29 are right on the
+phone: wingtips about 50 px apart on the ground (about 5 px inside each runway
+edge) and about 99 px in the air, and the plane sits on the runway centerline.
+But the plane is not parallel to the runway: at ATL the runway slopes up to
+the right by about 7 degrees and the plane is horizontal; at MCO the runway
+leans about 13 to 14 degrees to the left and the plane points straight up.
+
+Why: the map is an Albers conic projection (`PROJ` in `js/projection.js`),
+where the lines of longitude converge, so true north is not screen-up except on
+the central meridian (96 W). The popup runways and the whole map are drawn in
+that projection, but the plane is rotated by its true heading as if screen-up
+were north. I computed how far true north is from screen-up (clockwise, so
+negative means it leans left): MCO -8.9, ATL -7.0, MSP -1.7, DEN +5.2, LAX
++13.5, SEA +15.9, BOS -15.1, JFK -13.4 degrees; equal to minus 0.603 times the
+degrees of longitude east of 96 W. That matches the ATL and MCO screenshots (7
+and about 9 degrees, plus MCO's runway being a few degrees off true north). My
+popup test missed it because I measured at MSP, where the offset is only -1.7.
+The same thing affects the main screen: the plane icon points off its real
+direction of travel on the map by that amount, and in Track-Up the map is
+rotated by minus the true heading, so the plane's course is not quite straight
+up. This is very likely part of why Jon said the main screen plane "still looks
+off by a little bit" even after Build Log 29.
+
+The change:
+- `js/projection.js`: new `mapNorthOffsetDeg(lon)`, the angle of true north from
+  screen-up, in degrees clockwise, computed from the same projection constants as
+  `project()` (about minus 0.603 times (lon minus -96)).
+- Wherever a true heading is turned into an angle on the screen, use the heading
+  plus that offset at the plane's longitude (the airport's, in the popup): the
+  North-Up plane icon (`js/live-layer.js`), the popup's plane
+  (`js/airport-popup.js`), the Track-Up map rotation in all of its places
+  (`js/terminator.js` base map, `js/live-layer.js` live layer, render-cache
+  signature and the sliding snapshot's rotation and 1-degree tolerance,
+  `js/canvas.js` `mapToScreen()` and `getVisibleMapBounds()`), and the labels'
+  counter-rotation (`js/render-loop.js`), which must use the same angle so labels
+  stay upright. In Track-Up the plane stays pointing straight up, and now its
+  course really is straight up.
+- Unchanged: the compass (true north in Track-Up is still minus the heading, since
+  both the map's rotation and the north offset cancel), the true-heading logic
+  (GPS, smoothing, dead reckoning, the runway detection in the popup, callout
+  bearings), the route line, the cutscenes, the tap hit boxes (screen offsets from
+  the dot).
+
+Test plan: headless Chromium at 412x915. Popup: with the plane on runways at MCO,
+ATL, SEA and BOS, the plane's axis is within 1 degree of the runway on screen (the
+old build is 7 to 16 degrees off). Main screen, North-Up: after the plane moves
+5 NM at a few headings and longitudes, its nose points along its movement on
+screen within 1 degree. Track-Up: the movement is straight up within 1 degree at
+the same spots; the compass arrow still points to true north (projected north
+vs the arrow within 1 degree); labels stay upright; the Track-Up snapshot still
+matches a live redraw pixel for pixel at an airport far from 96 W; the tap,
+turn, touch, plane and callout suites; the quick check and the version check for
+`?v=88`; the live site. And, if Jon can, a phone screenshot of the popup at ATL or
+MCO afterwards.
+
 
 ## Build Planner
 
