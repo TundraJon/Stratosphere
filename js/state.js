@@ -4,6 +4,8 @@
             lat: 28.5383, // Start at current location: Orlando, FL
             lon: -81.3792,
             hdg: 45,
+            turnTarget: null,        // the target heading the current turn was planned for (see turnTowardHeading)
+            turnRateDegPerSec: 0,    // degrees per second the plane's heading is turning at toward that target
             speed: 460,
             altitude: null // feet, median-smoothed over last 5 readings; null until a real GPS altitude has ever come in
         },

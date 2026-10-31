@@ -418,57 +418,24 @@ Built as spec'd in the Build Queue (item 1), after Jon asked to "build all" (wit
 - The earlier suites were rerun: all pass (the version buster suite shifted to 85). The auto-open (v79) test still has its one failing check about my stale scratch comparison folder, not the product. Zero JS errors.
 - Not tested: a real phone with real fingers.
 
+### Build Log 28 (completed): v86, smooth turns: each heading change is spread over 3 seconds
+Built as spec'd in the Build Queue (item 2), after Jon asked to "build all". Jon: "average the change in direction over the course of 3 seconds, should look buttery smooth", and he accepted a one to two second lag behind the real heading. The cap was confirmed by him.
+- [x] `js/telemetry.js`, `turnTowardHeading()`: whenever the target heading changes (a new GPS fix), the turn still to do (the short way around, so 359 to 1 is 2 degrees) is spread evenly over `TURN_SPREAD_SECONDS = 3`: the turn rate becomes the remaining degrees divided by 3, per second, capped at the old `TURN_RATE_DEG_PER_SEC = 10`, which is now the fastest turn allowed. Each frame turns by that rate times the frame time and stops on the target. In a steady turn this is one continuous rotation (about 1 degree a second for 3 degrees per fix) instead of a 0.3 s swing followed by a 2.7 s hold.
+- [x] `js/state.js`: two new fields on `STATE.plane`: `turnTarget` (the target the current turn was planned for) and `turnRateDegPerSec`.
+- [x] One small safeguard beyond the spec: the rate is also recalculated if it has fallen to 0 while the heading is still more than 0.01 degree from the target (for example if something else sets the heading directly), so the plane cannot get stuck. Nothing in the app does that today.
+- [x] Left out, as spec'd: how GPS headings are averaged (last 5, vector average), the 3 s polling, the "below 2 knots the heading is frozen" rule, the Track-Up snapshot code and its 1 degree tolerance, the cutscenes and the airport popup. Everything that reads the plane's heading (the plane icon, Track-Up rotation, compass, heading readout, dead-reckoning direction) now gets the smoother value.
+
+**Verification:** headless Chromium at 412x915, synthetic GPS fixes through `onGPSSuccess()` every 3 seconds, the heading logged on every frame, v85 against the new build.
+- A steady turn of +3 degrees per fix: v85 holds the heading for up to 2.8 s between swings; the new build never holds longer than about 20 ms (one frame), and the largest single-frame rotation is 0.03 to 0.08 degrees; the rotation rate in the middle of the turn is 0.93 degrees a second; the heading has caught up with the target (within 1 degree) by the time the next fix is due; it never lags the averaged target by more than 3 degrees.
+- A 90-degree change still turns at no more than 10 degrees a second (measured over 1-second windows) and arrives; turning through north (356 to about 2) is continuous with no jump; the target stays frozen below 2 knots (unchanged rule); zero JS errors in both builds. (Single-frame rates were not used for the 10 degrees a second check: the frame timestamps jitter, and the old build shows the same noise.)
+- The earlier suites were rerun (version buster shifted to 86): offline cache, home, home marker, use-my-location, fonts, installable, popup close, destination save, startup race (0 of 30 loads), version buster, airborne size, Track-Up slide, altitude, landmark callouts and the finger/1-second suite all pass. The auto-open (v79) test still has its one failing check about my stale scratch comparison folder, not the product. The full run was stopped by its 30-minute limit before its last two tests (the airport tap suite and the new turn test); the turn test was run on its own against this build (11 of 11 pass), and the tap suite was not rerun for this build because `js/touch.js` is not touched by it (it passed on v85).
+- Not tested: a real phone and a real turn; the lag (about 1.5 s on average at 3-degree steps) is as Jon accepted.
+
 ## Build Queue
 
 Fully specified work that is waiting for a go-ahead. Items leave this list in the same commit that builds them.
 
-### 1. Smooth turns: spread each heading change over 3 seconds
-**Not yet authorized to build.** Would ship as the next free version number
-after item 1 (v86 if item 1 goes first); every `?v=` number in `index.html`
-changes to it. Requested by Jon, who agreed a one to two second lag behind the
-real heading is fine ("average the change in direction over the course of 3
-seconds, should look buttery smooth").
-
-Why: GPS is polled every 3 seconds and the app turns toward the new averaged
-heading at a fixed 10 degrees a second (`turnTowardHeading()`, with
-`TURN_RATE_DEG_PER_SEC`, in `js/telemetry.js`). A 3-degree change is finished
-in 0.3 seconds and then the heading holds about 2.7 seconds, so the Track-Up
-map (and the plane icon, compass and heading readout) turn in jumps. Measured
-identically in v81 and v84, so it is the original design and not caused by the
-snapshot work (Build Log 23).
-
-The change (`js/telemetry.js`, plus a field or two in `js/state.js`):
-- Whenever the target heading changes (a new GPS fix), work out how far the
-  plane's heading still has to turn (the short way around, so 359 to 1 is
-  2 degrees) and turn at the steady rate that covers it in 3 seconds
-  (remaining degrees divided by 3, per second). Each frame turns by that rate
-  times the frame time and stops exactly on the target.
-- In a steady turn this means each 3-degree step is spread over the 3 seconds
-  before the next fix, so the map rotates continuously at about 1 degree a
-  second with no pauses. If the heading has not quite arrived when the next
-  fix comes, the rate is recalculated from the remaining distance.
-- Keep the existing 10 degrees a second as the fastest turn allowed, so a large
-  change (for example the first fix at start-up, or swinging 90 degrees) still
-  turns at the same speed as today instead of snapping in 3 seconds (confirmed
-  by Jon).
-- Left alone: how GPS headings are averaged (last 5, vector average), the
-  GPS polling, the "below 2 knots the heading is frozen" rule, the
-  Track-Up snapshot code and its 1 degree tolerance, the cutscenes and the
-  airport popup. Everything that reads the plane's heading (the plane icon,
-  Track-Up rotation, compass, heading readout, dead-reckoning direction) gets
-  the smoother value, with the lag Jon accepted.
-
-Test plan: headless Chromium at 412x915, synthetic GPS fixes every 3 seconds
-with the heading 3 degrees further each time, logging the heading and the
-rotation shown on every frame: v84 reproduces the steps (3 degrees in 0.3 s,
-then a hold), the new build turns steadily (no single-frame change over
-about 0.1 degree and no hold longer than a frame), arrives at each target
-within 3 seconds, wraps correctly through 0/360, a 90-degree change still
-turns at no more than 10 degrees a second, frozen heading below 2 knots
-unchanged, Track-Up snapshot behavior unchanged (the earlier suites), then
-the version check and the live site.
-
-### 2. Plane icon: centered and rotated exactly (main screen and airport popup), popup sizes, 5-second size change
+### 1. Plane icon: centered and rotated exactly (main screen and airport popup), popup sizes, 5-second size change
 **Not yet authorized to build.** Would ship as the next free version number
 after items 1 and 2 (v87 if they go first); every `?v=` number in `index.html`
 changes to it. Requested by Jon in several steps (the popup's takeoff and

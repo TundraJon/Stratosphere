@@ -60,14 +60,24 @@
         document.getElementById('val-ete').textContent = hasValidEte ? `${hours}h ${mins}m` : "--h --m";
     }
 
-    const TURN_RATE_DEG_PER_SEC = 10; // fixed turn rate, not time-based
+    const TURN_RATE_DEG_PER_SEC = 10; // fastest turn allowed, not time-based
+    const TURN_SPREAD_SECONDS = 3;    // each new target heading is reached smoothly over this long (about one GPS poll)
 
-    // Turns STATE.plane.hdg toward targetHdg at the fixed TURN_RATE_DEG_PER_SEC
-    // (GPS mode turning toward the averaged real-world heading).
+    // Turns STATE.plane.hdg toward targetHdg (GPS mode turning toward the
+    // averaged real-world heading). Whenever the target changes (a new GPS
+    // fix), the turn still to do is spread evenly over TURN_SPREAD_SECONDS,
+    // so a steady turn rotates continuously instead of swinging a few
+    // degrees and then holding until the next fix. The old fixed
+    // TURN_RATE_DEG_PER_SEC is kept as the fastest turn allowed, so a big
+    // change (the first fix, a sharp turn) turns as quickly as before.
     function turnTowardHeading(targetHdg, deltaSeconds) {
         let hdgDiff = targetHdg - STATE.plane.hdg;
         hdgDiff = ((hdgDiff + 540) % 360) - 180;
-        const maxTurnThisFrame = TURN_RATE_DEG_PER_SEC * deltaSeconds;
+        if (targetHdg !== STATE.plane.turnTarget || (STATE.plane.turnRateDegPerSec === 0 && Math.abs(hdgDiff) > 0.01)) {
+            STATE.plane.turnTarget = targetHdg;
+            STATE.plane.turnRateDegPerSec = Math.min(Math.abs(hdgDiff) / TURN_SPREAD_SECONDS, TURN_RATE_DEG_PER_SEC);
+        }
+        const maxTurnThisFrame = STATE.plane.turnRateDegPerSec * deltaSeconds;
         if (Math.abs(hdgDiff) <= maxTurnThisFrame) {
             STATE.plane.hdg = targetHdg;
         } else {
