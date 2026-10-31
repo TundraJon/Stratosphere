@@ -20,7 +20,7 @@ Read `README.md` first. It holds the standing rule, the Build Log, the Build Que
 3. If something is ambiguous, ask. Restate what you think Jon wants and spell out the exact interpretation.
 4. No unrequested clean-up, optimizing, modernizing or reformatting. Keep formatting, spacing and structure.
 5. Never add or remove features unasked, and never touch unrelated code.
-6. Test before pushing. Small changes get a focused test. Broad changes get the full suite.
+6. Test before pushing, and keep it to about 5 minutes at most. `node tests/run.js` is the quick check (version numbers, a smoke test, and only the suites for the files that changed; about 2 minutes). Run `node tests/run.js --full` (5 to 6 minutes) only when Jon asks, or when a build touches the loader, service worker, caching or startup code. Details in `tests/README.md`.
 7. Commit and push to `main`, with no PRs.
 8. Phone-first. Design and test at Pixel 7 size.
 9. Direct and casual, under about 300 words unless asked for more. Give real recommendations and push back when an idea has a problem. No filler openers.
