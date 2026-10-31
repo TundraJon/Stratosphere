@@ -543,9 +543,9 @@ The change (`js/airport-popup.js` and `js/live-layer.js`):
   by the heading minus 44.5. Sizes are given as a font size; the measured
   constants (0.059, 0.129, 44.5, 1.407) live in one place.
 - **Popup, Follow:** ground font 35.5 px (wingspan 50 px, 5 px inside the 60 px
-  runway on each side), airborne font 71.1 px (wingspan 100 px; this is 2.0 times the
-  ground size and about 1.7 times the runway's 60 px, not 1.9; **to be
-  confirmed by Jon**, 1.9 times would be 114 px). `AIRPORT_POPUP_PLANE_PX` becomes
+  runway on each side), airborne font 71.1 px (wingspan 100 px, exactly 2.0 times the
+  ground size and about 1.7 times the runway's 60 px; Jon confirmed he wants
+  2x the ground size, whatever that works out to). `AIRPORT_POPUP_PLANE_PX` becomes
   35.5; `AIRPORT_POPUP_AIRBORNE_SCALE` stays 2.
 - **Popup, Overview:** new `AIRPORT_POPUP_OVERVIEW_PLANE_PX = 26`. The drawn size
   blends from 26 to the Follow size along with the existing camera blend
