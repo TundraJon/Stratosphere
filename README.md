@@ -526,6 +526,83 @@ turn, touch, plane and callout suites; the quick check and the version check for
 MCO afterwards.
 
 
+### 2. Remove altitude completely, and add a trip-progress gauge card in its place
+**Not yet authorized to build.** Would ship as the next free version number after
+item 1 (v89 if item 1 goes first); every `?v=` number in `index.html` changes to
+it. Requested by Jon: "toss altitude, replace with something else more helpful",
+answered "everything" to how much to remove, and asked for a card like the picture
+he sent (a plane icon inside a two-thirds speedometer-style arc, with big text
+and a small caption beside it; his picture says "51m remaining"), using the
+percent of the distance, not time, and remembering the start airport to work it
+out. Items marked **to be confirmed** are my reading of what he left open.
+
+Why altitude goes: the phone delivers two different altitude series and flips
+between them with no warning, and never reports an accuracy (flight screenshots
+of 18:19 to 19:23: a low, slowly changing, often repeated value such as 8,534 ft
+three times or 6,010 three times, and a smooth GPS-like value such as 33,592 to
+33,920 ft; for 33 seconds only the low one arrived and the app showed 1,050 ft at
+294 kt). Cabin pressure was a guess, never confirmed.
+
+**Part 1, remove altitude** (everything, checked in the files):
+- `index.html`: the "~Altitude" card with its status dot (`val-altitude`,
+  `altitude-status-dot`) and the "Altitude diagnostics" group in Settings
+  (`alt-diag`).
+- `js/telemetry.js`: the lines that fill the card and reset it to `--`.
+- `js/controls.js`: the whole altitude block (about 50 lines): reading
+  `coords.altitude` and `altitudeAccuracy` in `onGPSSuccess()`, the 3-consistent-
+  readings rule and its constants, `shownAltitudeFt()` and the 60-second hold,
+  the raw log, `updateAltitudeDiag()` and its calls, the altitude status dot code.
+- `js/state.js`: `plane.altitude` and the gps fields `recentAltitudes`,
+  `lastAltitudeAcceptedTime`, `rawAltitudeLog`, `lastAltitudeFixTime`.
+- `tests/`: delete `test_altrule.js` and `test_altdiag.js`, and take them out of
+  `tests/run.js` and `tests/README.md`.
+- Not touched: the GPS status dot in the Flight Info header, the cutscene's
+  `PLANE_TOP_ALTITUDE` (a screen position, not altitude), and the landmark
+  callouts (they never used altitude). Build Log entries 17 and 18 stay as history.
+
+**Part 2, the trip-progress gauge card** (takes the altitude card's place in the
+3x2 grid, same slot):
+- Look, like Jon's picture: a plane icon in the middle of an arc that covers
+  two thirds of a circle (240 degrees) and is open at the bottom; a dark track
+  with a bright filled part from the lower left, clockwise, whose length is the
+  percent complete; big text to the right and a small caption under it. Colors
+  from the app's theme variables (the accent for the fill, the muted color for the
+  track) so day and night modes both work; the plane is a simple inline SVG
+  icon, not the emoji. The card label is "Progress". At 0% the arc is empty, at
+  100% full; the fill eases between values (about 0.6 s). Sized to fit the grid
+  card at 412 px wide, checked in a screenshot.
+- Text: big "62%" with the small caption "complete" (**to be confirmed**:
+  Jon's picture shows time remaining; he asked for percent of distance).
+- The math: percent = 1 minus (distance from the plane to the destination
+  divided by the distance from the start point to the destination), using the
+  app's own `getDistance()` (great-circle), limited to 0 to 100.
+- **The start point** ("remember the start airport"): when a takeoff is seen
+  (speed was below 50 MPH and now goes above 70 MPH, the same numbers the
+  cutscene uses), take the plane's position and snap it to the nearest airport
+  in the app's list if one is within 5 NM (so it matches that airport's
+  coordinates and name), otherwise keep the raw position. Saved in
+  `localStorage` (a new key, with the position, the airport name if any and the
+  time) so it survives a reload or the app being discarded in flight, and ignored
+  after 24 hours. A new takeoff replaces it.
+- If the app is opened in flight with no saved start (**to be confirmed**):
+  the first GPS fix becomes the start, so the gauge counts from where the app was
+  opened; before any fix it shows `--` with an empty arc.
+- If the destination is changed in flight (**to be confirmed**): the percent is
+  recalculated from the same start point to the new destination (it can jump).
+- Left alone: the other five cards, the destination dropdown, the cutscenes, the
+  airport popup and everything else.
+
+Test plan: headless Chromium at 412x915. Removal: no altitude card, dot,
+diagnostics group or altitude code left (searching the files; the two named
+exceptions only), the grid still shows six cards, the smoke test and the other
+suites pass. Gauge: the percent is right at the start (0), half way (50), at the
+destination (100) and beyond either end (clamped), the arc length matches, takeoff
+detection saves the start (snapped to an airport within 5 NM and raw otherwise),
+reload restores it and 25 hours later ignores it, opening in flight uses the first
+fix, changing the destination recalculates, day and night colors, screenshots of
+the card in both modes at phone size; then the quick check, the version check
+and the live site.
+
 ## Build Planner
 
 Ideas and known gaps with no committed design yet. Resolved, built, dropped or superseded items are deleted from here, and their history lives in the Build Log.
@@ -565,6 +642,3 @@ Ideas and known gaps with no committed design yet. Resolved, built, dropped or s
    - Still open: which rivers (all 9, or only some); whether the Mississippi
      chain counts as the whole river; the naming; whether it needs its own
      on/off setting or rides the existing Landmark callouts button.
-2. **Altitude: remove it and replace the card with something more useful (Jon's decision):** after the flight screenshots Jon said "toss altitude, replace with something else more helpful". Not spec'd yet. Why (kept here as the record, since the Build Log has only the pieces): the phone delivers two different altitude series and flips between them with no warning, and the accuracy value is never reported (`±-- m` on every line, so it cannot tell them apart). One is a low, slowly changing, often repeated value (8,534 ft three times, 7,442 down to 7,380, 6,069 and 6,010 three times, and a 33-second stretch of 896 rising to 1,066 ft at 294 kt near GRR); the other is a smooth GPS-like value moving 30 to 60 ft per fix (33,592 to 33,920, 37,251 to 37,149, 32,060 to 31,530). The low one is always lower. Cabin pressure was the guess for it, not confirmed (8,534 ft is high for a cabin, and the repeats do not look like a live barometer). The "3 consistent readings" rule (Build Log 18) shows the right value in cruise but showed 1,050 ft when only the low series arrived (the screenshot near GRR). Screenshot times are only when Jon noticed a change, so they do not show how often it flips.
-   - What exists today (checked in the files): the "~Altitude" card and its status dot in the Flight Info grid (`index.html`, `js/telemetry.js`); the 3-consistent-readings rule, the 60-second hold, the raw log and the diagnostics readout in `js/controls.js` (about 50 lines mention altitude); the "Altitude diagnostics" group in Settings (`index.html`); altitude fields in `js/state.js` (`plane.altitude`, `gps.recentAltitudes`, `lastAltitudeAcceptedTime`, `rawAltitudeLog`, `lastAltitudeFixTime`); the test suites `test_altrule` and `test_altdiag`. Not altitude-related despite the name: the cutscene's `PLANE_TOP_ALTITUDE` (a screen position) and the landmark callouts (they never use altitude).
-   - Open questions for Jon: (a) how much to remove: the card and its dot only, or also the calculation, the diagnostics readout and its Settings group, the state fields and the two test suites (my suggestion: all of it, since leftovers would be dead code, but it is a bigger change); (b) what replaces the card (my suggestions, all from data we already have, offline: trip progress as a percent with time flown, which needs the starting point taken from the first GPS fix; the next visible landmark ahead and its distance, from the callouts data; the sun, such as the next sunrise or sunset time at the plane's position or which side the sun is on; course deviation from the straight line to the destination; the nearest airport and its distance; GPS accuracy), and Jon should pick one; (c) whether the grid keeps six cards (a swap) or changes.
