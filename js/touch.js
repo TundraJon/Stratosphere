@@ -59,10 +59,11 @@
     // font system's max 2x scale regardless of current zoom, since a
     // slightly generous target below max zoom doesn't hurt. Drawn via
     // drawFixedLabel, which renders in real screen pixels starting at a
-    // (5,3) local offset from the airport's dot, and in Track-Up mode
-    // additionally counter-rotates the label by heading so it stays
-    // upright on screen -- both accounted for here by inverse-transforming
-    // the tap point into that same local space before testing.
+    // (5,3) local offset from the airport's dot. In Track-Up it
+    // counter-rotates the label by the heading, which only cancels the
+    // map's own rotation: the label always sits upright on screen. So the
+    // tap's screen offset from the dot is already in the label's own space
+    // and is tested as is, with no rotation by the heading.
     function findTappedAirport(clientX, clientY) {
         if (!STATE.toggles.airports) return null;
         if (STATE.view.zoom < LABEL_DETAIL_ZOOM_THRESHOLD) return null;
@@ -72,16 +73,11 @@
         const hitW = BASE_CODE_W * MAX_FONT_SCALE, hitH = BASE_CODE_H * MAX_FONT_SCALE;
         const left = 2 - PAD, right = 2 + hitW + PAD;
         const top = 3 - hitH - PAD, bottom = 3 + 4 + PAD;
-        const labelRotation = STATE.view.trackUp ? STATE.plane.hdg * Math.PI / 180 : 0;
-        const cosA = Math.cos(-labelRotation), sinA = Math.sin(-labelRotation);
 
         for (const ap of AIRPORTS) {
             const mapPos = project(ap.lat, ap.lon);
             const dotScreen = mapToScreen(mapPos.x, mapPos.y);
-            const dx = clientX - dotScreen.x, dy = clientY - dotScreen.y;
-            // Rotate the tap point into the label's own local (unrotated) space
-            const localX = dx * cosA - dy * sinA;
-            const localY = dx * sinA + dy * cosA;
+            const localX = clientX - dotScreen.x, localY = clientY - dotScreen.y;
             if (localX >= left && localX <= right && localY >= top && localY <= bottom) {
                 return ap;
             }
@@ -106,11 +102,7 @@
         const hitW = BASE_CODE_W * MAX_FONT_SCALE, hitH = BASE_CODE_H * MAX_FONT_SCALE;
         const left = 2 - PAD, right = 2 + hitW + PAD;
         const top = 3 - hitH - PAD, bottom = 3 + 4 + PAD;
-        const labelRotation = STATE.view.trackUp ? STATE.plane.hdg * Math.PI / 180 : 0;
-        const cosA = Math.cos(-labelRotation), sinA = Math.sin(-labelRotation);
-        const dx = clientX - dotScreen.x, dy = clientY - dotScreen.y;
-        const localX = dx * cosA - dy * sinA;
-        const localY = dx * sinA + dy * cosA;
+        const localX = clientX - dotScreen.x, localY = clientY - dotScreen.y; // screen offset = label space (see findTappedAirport)
         return localX >= left && localX <= right && localY >= top && localY <= bottom;
     }
 

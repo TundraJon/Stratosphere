@@ -404,56 +404,25 @@ Docs only; no code or site file changed, so there is no version bump (the `?v=` 
 
 **Verification:** read all three changed files back after the edits: `docs/BUILD-WORKFLOW.md` is byte-identical to the uploaded file (`cmp`), the new `CLAUDE.md` lines are in place and the rest of the file is unchanged (`git diff` shows only those lines), and this entry sits above the Build Queue heading with the Queue still reading `_Empty — nothing queued right now._` and the Planner still holding the River callouts item. Nothing was run in a browser because no site file changed.
 
+### Build Log 27 (completed): v85, fix: tapping an airport code (or the destination pin's code) did nothing in Track-Up unless the plane was heading north
+Built as spec'd in the Build Queue (item 1), after Jon asked to "build all" (with items 2 and 3, logged next). Reported by Jon: zoomed all the way in, Airports layer on, plane not near the airport, tapping the code letters did nothing, in Track-Up (what he calls follow mode, confirmed).
+- [x] `js/touch.js`, `findTappedAirport()` and `isTapOnDestinationMarker()`: the tap's screen offset from the airport's dot is now used as is. Before, it was rotated by the plane's heading a second time, although in Track-Up the label is already drawn upright on screen (the map's rotation and the label's counter-rotation cancel), so the tappable box swung around the dot as the heading changed and only lined up near heading north. Removed `labelRotation`, `cosA` and `sinA` from both functions and corrected the comment that said the rotation was accounted for.
+- [x] The bug is old: the same code is in the original single-file app, so none of builds v82 to v84 caused it.
+- [x] Left out, as spec'd: the tap box size, the zoom 20 minimum for regular airports (the destination pin has none), the Airports layer needing to be on, the plane tap being checked first, the tap rules (under 400 ms, under 12 px of movement) and North-Up behavior. Noted, not changed: the 3-letter codes are drawn at every zoom but regular airports only open from zoom 20 up.
+
+**Verification:** headless Chromium at 412x915 (devicePixelRatio 2.625), real touch taps, KDEN with the plane 90 px away.
+- Track-Up, 3 spots on the code text, 8 headings (0 to 315 in 45s) at zoom 20, 60 and 120: 72 of 72 taps open KDEN in the new build; the old build (v84) opened only 18 of 72.
+- The destination pin's code, 6 headings at zoom 20 and 120: 36 of 36 open; the old build opened 10 of 36.
+- Taps 40 to 90 px away from the code never open KDEN (a neighboring airport's own code can open that airport; at zoom 20 neighbors are only about 20 px apart, which is expected).
+- North-Up: identical before and after (all 9 taps open in both builds). The plane tap still wins near the plane (icon resized, no popup).
+- The earlier suites were rerun: all pass (the version buster suite shifted to 85). The auto-open (v79) test still has its one failing check about my stale scratch comparison folder, not the product. Zero JS errors.
+- Not tested: a real phone with real fingers.
+
 ## Build Queue
 
 Fully specified work that is waiting for a go-ahead. Items leave this list in the same commit that builds them.
 
-### 1. Fix: tapping an airport code (or the destination pin's code) does nothing in Track-Up unless the plane is heading north
-**Not yet authorized to build.** Would ship as v85 (every `?v=` number in
-`index.html` becomes 85). Reported by Jon: zoomed all the way in, Airports layer
-on, plane not near the airport, tapping the code letters does nothing, in
-what he calls follow mode (Track-Up, the compass button; confirmed by Jon).
-
-What is wrong (reproduced in headless Chromium at 412x915 with real touch
-taps, zoom 120, Track-Up, tapping three spots on KDEN's code text with the
-plane 90 px away): the tap opens the popup at heading 0, partly at 45 and
-315, and never at 90, 135, 180, 225 or 270. The same on the destination
-pin's code. North-Up works at every zoom from 20 up. The v81 build behaves
-identically, and the code is unchanged since the original single-file app, so
-none of builds v82 to v84 caused it.
-
-Why: in Track-Up the map is drawn rotated by minus the heading, and
-`drawFixedLabel()` (`js/render-loop.js`) rotates each label back by plus the
-heading, so the code text always sits upright on screen at the same offset
-from the airport's dot. The tap test in `js/touch.js` (`findTappedAirport()`
-and `isTapOnDestinationMarker()`) takes the tap's screen offset from the dot
-and rotates it by the heading again, as if the label were still tilted. That
-extra rotation swings the tappable box around the dot as the heading changes;
-it only lines up with the text when the heading is about north.
-
-The change (`js/touch.js` only):
-- In both functions, drop the rotation: use the tap's screen offset from the
-  dot (`dx`, `dy`) directly as the position in the label's space. Remove
-  `labelRotation`, `cosA` and `sinA` from both, and correct the comments that
-  say the rotation is accounted for.
-- Nothing else changes: the size of the tap box, the zoom 20 minimum for
-  regular airports (the destination pin has no minimum), the Airports layer
-  needing to be on, the plane tap being checked first, the tap rules (under
-  400 ms and 12 px of movement), and North-Up behavior.
-
-Left alone, noted: codes are drawn at every zoom but regular airports only
-open from zoom 20 up. Not part of this fix; say so if that should change too.
-
-Test plan: headless Chromium at 412x915, real touch taps. Track-Up at
-headings 0, 45, 90, 135, 180, 225, 270 and 315 and zoom 20, 60 and 120: taps
-on the code text of a regular airport and on the destination pin's code open
-the right popup; taps well away from the code (60 px or more) do not; North-Up
-results are identical to before; the plane tap still wins near the plane;
-the old build (v84) fails the same taps; then the earlier suites, the version
-check for `?v=85`, and the live site.
-
-
-### 2. Smooth turns: spread each heading change over 3 seconds
+### 1. Smooth turns: spread each heading change over 3 seconds
 **Not yet authorized to build.** Would ship as the next free version number
 after item 1 (v86 if item 1 goes first); every `?v=` number in `index.html`
 changes to it. Requested by Jon, who agreed a one to two second lag behind the
@@ -499,7 +468,7 @@ turns at no more than 10 degrees a second, frozen heading below 2 knots
 unchanged, Track-Up snapshot behavior unchanged (the earlier suites), then
 the version check and the live site.
 
-### 3. Plane icon: centered and rotated exactly (main screen and airport popup), popup sizes, 5-second size change
+### 2. Plane icon: centered and rotated exactly (main screen and airport popup), popup sizes, 5-second size change
 **Not yet authorized to build.** Would ship as the next free version number
 after items 1 and 2 (v87 if they go first); every `?v=` number in `index.html`
 changes to it. Requested by Jon in several steps (the popup's takeoff and
