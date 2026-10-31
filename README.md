@@ -492,7 +492,26 @@ Built as spec'd in the Build Queue (item 2), after Jon asked to "build all". Jon
 
 Fully specified work that is waiting for a go-ahead. Items leave this list in the same commit that builds them.
 
-_Empty — nothing queued right now._
+### 1. Make the plane icon inside the Progress gauge about 50% bigger
+**Not yet authorized to build.** Would ship as v90 (every `?v=` number in
+`index.html` becomes 90). Requested by Jon after seeing the gauge on his phone.
+
+Today the plane inside the gauge (`index.html`, the `gauge-plane` path in the
+Progress card) is drawn at scale 0.62 of its 24-unit icon, about 15 px tall in the
+44 px gauge. The change: scale 0.62 becomes 0.93 (exactly 1.5 times), about 22 px,
+still centered and still pointing right. The arc's inner opening is about 31 px
+across (radius 18 minus half the 4.5 px stroke, times 2), so the bigger plane fits
+without touching the arc.
+
+Left alone: the arc, its size and colors, the text, the card, everything else.
+
+Test plan: `tests/test_progress.js` gets a check that the plane's drawn width is 1.5
+times the old one (about 15 px to about 22 px, measured from its bounding box) and
+that it stays inside the arc's opening with room to spare, in night and day mode;
+screenshots of the card in both modes at phone size; the quick check and the
+version check for `?v=90`; the live site.
+
+
 
 ## Build Planner
 
