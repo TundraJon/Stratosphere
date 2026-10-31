@@ -18,7 +18,7 @@
         ctx.translate(w / 2 + STATE.view.offsetX, h / 2 + STATE.view.offsetY);
         ctx.scale(STATE.view.zoom, STATE.view.zoom);
         if (STATE.view.trackUp) {
-            const rotationAngle = -STATE.plane.hdg * Math.PI / 180;
+            const rotationAngle = -planeCourseOnScreenDeg() * Math.PI / 180;
             ctx.rotate(rotationAngle);
             const planeProj = project(STATE.plane.lat, STATE.plane.lon);
             ctx.translate(-planeProj.x, -planeProj.y);
@@ -86,7 +86,7 @@
             } else {
                 const screenX = w / 2 + STATE.view.offsetX + planePos.x * STATE.view.zoom;
                 const screenY = h / 2 + STATE.view.offsetY + planePos.y * STATE.view.zoom;
-                drawPlaneGlyph(ctx, screenX, screenY, STATE.plane.hdg, 26 * STATE.planeSizeMult);
+                drawPlaneGlyph(ctx, screenX, screenY, planeCourseOnScreenDeg(), 26 * STATE.planeSizeMult);
             }
         }
 
@@ -224,7 +224,7 @@
         if (sl.valid && !R.cacheValid) sl.valid = false;
 
         // How long the heading has held within the tolerance of one value.
-        const hdg = STATE.plane.hdg;
+        const hdg = planeCourseOnScreenDeg(); // where the plane points on the screen (true heading plus the map's north offset)
         if (sl.steadyRefHdg === null || angleDiffDeg(hdg, sl.steadyRefHdg) > TRACKUP_SLIDE_HEADING_TOL_DEG) {
             sl.steadyRefHdg = hdg;
             sl.steadySince = now;
@@ -279,7 +279,7 @@
         // reality and must be rebuilt. Folding it all into one string is
         // simpler and less error-prone than manually invalidating the
         // cache inside every individual toggle function.
-        const rotationAngle = STATE.view.trackUp ? -STATE.plane.hdg * Math.PI / 180 : 0;
+        const rotationAngle = STATE.view.trackUp ? -planeCourseOnScreenDeg() * Math.PI / 180 : 0;
         let planeProjX = 0, planeProjY = 0;
         if (STATE.view.trackUp) {
             const p = project(STATE.plane.lat, STATE.plane.lon);

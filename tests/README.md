@@ -20,6 +20,7 @@ The goal is 5 minutes at the very most per build, so: quick check for ordinary b
 | `test_smoke` | page loads, GPS fix updates the readouts, Track-Up toggle, airport popup opens and closes, Settings opens, 43 landmarks classified, no JS errors |
 | `test_tapfix` | tapping an airport's (and the destination pin's) code opens it in Track-Up at every heading, North-Up unchanged, plane tap still wins |
 | `test_plane` | the plane icon: centered on its position and lined up with the heading on both screens, popup sizes (26 px in Overview, 50 px wingspan on the ground, 100 px in the air), the 5-second ease, the 140/160 MPH hold rule |
+| `test_rotation` | the plane and the Track-Up map use where the plane points on the screen (true heading plus the Albers map's north offset): plane along the runway at MCO, ATL, SEA and BOS, nose along its movement, Track-Up course straight up, compass and labels still right |
 | `test_popup_x` | the airport popup's close button |
 | `test_slide` | Track-Up sliding map snapshot: redraw count, pixel match with a live redraw, every trigger that drops it |
 | `test_touch` | no snapshot or cache while a finger (or mouse button) is down, 1 second wait, North-Up cache |

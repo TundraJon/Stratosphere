@@ -22,6 +22,23 @@
         return Math.round(basePx * zoomFontScale());
     }
 
+    // The map is an Albers conic projection, where the lines of longitude
+    // converge, so true north points straight up the screen only on the
+    // central meridian. mapNorthOffsetDeg() is the angle of true north from
+    // screen-up at a longitude, in degrees clockwise (negative = leaning
+    // left), from the same constants project() uses: -n * (lon - lon0).
+    // planeCourseOnScreenDeg() is where a plane flying its true heading
+    // actually points on the screen, and what the Track-Up map is rotated by.
+    function mapNorthOffsetDeg(lon) {
+        const d2r = Math.PI / 180;
+        const n = 0.5 * (Math.sin(PROJ.lat1 * d2r) + Math.sin(PROJ.lat2 * d2r));
+        return -n * (lon - PROJ.lon0);
+    }
+
+    function planeCourseOnScreenDeg() {
+        return STATE.plane.hdg + mapNorthOffsetDeg(STATE.plane.lon);
+    }
+
     function project(lat, lon) {
         const d2r = Math.PI / 180;
         const r0 = 6371; // Earth Radius in km (Relative scaling)

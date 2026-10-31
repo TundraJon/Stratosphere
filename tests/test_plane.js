@@ -65,7 +65,7 @@ const INSTALL = `
     STATE.render.cacheValid = false; __rec.main = null; draw(); return __rec.main; }, [trackUp, hdg, mult]);
   for (const trackUp of [false, true]) {
     let worstC = 0, worstA = 0, sizes = [];
-    for (const hdg of [0, 45, 90, 135, 180, 225, 270, 315]) { const r = await mainCase(trackUp, hdg, 3); const expectHdg = trackUp ? 0 : hdg; worstC = Math.max(worstC, Math.hypot(r.cxCss - r.x, r.cyCss - r.y)); worstA = Math.max(worstA, Math.abs(r.axisDeg - expectHdg)); }
+    for (const hdg of [0, 45, 90, 135, 180, 225, 270, 315]) { const r = await mainCase(trackUp, hdg, 3); const expectHdg = trackUp ? 0 : hdg + (await n.page.evaluate(() => mapNorthOffsetDeg(-98))); worstC = Math.max(worstC, Math.hypot(r.cxCss - r.x, r.cyCss - r.y)); worstA = Math.max(worstA, Math.abs(r.axisDeg - expectHdg)); }
     for (const m of [1, 2, 3]) { const r = await mainCase(trackUp, 90, m); sizes.push(r.px); }
     const argErr = await n.page.evaluate(() => { const r = __rec.main; const p = project(STATE.plane.lat, STATE.plane.lon); const s = mapToScreen(p.x, p.y); return Math.hypot(r.x - s.x, r.y - s.y); });
     ok(`main screen ${trackUp ? 'Track-Up' : 'North-Up'}: the glyph is drawn exactly at the plane's screen position (same point mapToScreen gives)`, argErr < 0.01, argErr.toFixed(4));

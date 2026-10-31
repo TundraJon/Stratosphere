@@ -473,10 +473,11 @@
         if (inFrame) {
             const planeScreen = toPopup(followTargetMapPos.x, followTargetMapPos.y);
             // Always North-up in this popup (per explicit spec), so no
-            // Track-Up rotation term here -- just the plane's own heading.
+            // Track-Up rotation term here -- just where the plane points on
+            // this (Albers) map: its true heading plus the map's north offset.
             const followPlanePx = AIRPORT_POPUP_PLANE_PX * (1 + (AIRPORT_POPUP_AIRBORNE_SCALE - 1) * STATE.airportPopup.airborneBlend);
             const planePx = AIRPORT_POPUP_OVERVIEW_PLANE_PX + (followPlanePx - AIRPORT_POPUP_OVERVIEW_PLANE_PX) * STATE.airportPopup.cameraBlend;
-            drawPlaneGlyph(ctx2, planeScreen.x, planeScreen.y, STATE.plane.hdg, planePx);
+            drawPlaneGlyph(ctx2, planeScreen.x, planeScreen.y, planeCourseOnScreenDeg(), planePx);
         } else if (lastGpsFix !== null) {
             // Off-screen: arrow at the point where the true bearing line
             // (airport center -> plane) crosses the popup's edge, pointing

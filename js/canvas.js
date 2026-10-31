@@ -175,7 +175,7 @@
     function mapToScreen(mapX, mapY) {
         const w = window.innerWidth, h = window.innerHeight;
         const zoom = STATE.view.zoom;
-        const rotationAngle = STATE.view.trackUp ? -STATE.plane.hdg * Math.PI / 180 : 0;
+        const rotationAngle = STATE.view.trackUp ? -planeCourseOnScreenDeg() * Math.PI / 180 : 0;
         let originX = 0, originY = 0;
         if (STATE.view.trackUp) {
             const p = project(STATE.plane.lat, STATE.plane.lon);
@@ -191,7 +191,7 @@
     function getVisibleMapBounds() {
         const w = window.innerWidth, h = window.innerHeight;
         const zoom = STATE.view.zoom;
-        const rotationAngle = STATE.view.trackUp ? -STATE.plane.hdg * Math.PI / 180 : 0;
+        const rotationAngle = STATE.view.trackUp ? -planeCourseOnScreenDeg() * Math.PI / 180 : 0;
         let originX = 0, originY = 0;
         if (STATE.view.trackUp) {
             const p = project(STATE.plane.lat, STATE.plane.lon);

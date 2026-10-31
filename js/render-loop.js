@@ -10,7 +10,7 @@
         const invZoom = 1 / STATE.view.zoom;
         ctx.scale(invZoom, invZoom);
         if (STATE.view.trackUp) {
-            ctx.rotate(STATE.plane.hdg * Math.PI / 180); // counters the map's -hdg rotation
+            ctx.rotate(planeCourseOnScreenDeg() * Math.PI / 180); // counters the map's rotation
         }
         callback();
         ctx.restore();

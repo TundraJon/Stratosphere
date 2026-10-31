@@ -17,8 +17,9 @@ const base = args.includes('--base') ? args[args.indexOf('--base') + 1] : 'HEAD'
 // every suite, and which source files make it relevant
 const RULES = [
   [/^js\/touch\.js$/, ['test_tapfix']],
-  [/^js\/(airport-popup|canvas)\.js$/, ['test_plane', 'test_popup_x']],
-  [/^js\/live-layer\.js$/, ['test_slide', 'test_touch', 'test_plane']],
+  [/^js\/(projection|render-loop|terminator)\.js$/, ['test_rotation', 'test_slide']],
+  [/^js\/(airport-popup|canvas)\.js$/, ['test_plane', 'test_popup_x', 'test_rotation']],
+  [/^js\/live-layer\.js$/, ['test_slide', 'test_touch', 'test_plane', 'test_rotation']],
   [/^js\/telemetry\.js$/, ['test_turn']],
   [/^js\/(callouts|state)\.js$/, ['test_callouts']],
   [/^js\/controls\.js$/, ['test_altrule', 'test_altdiag', 'test_dest', 'test_home', 'test_gps_btn']],
@@ -27,7 +28,7 @@ const RULES = [
   [/^(css\/|fonts\/)/, ['test_fonts']],
   [/^js\/(loader|early-gps|cutscene)\.js$|^index\.html$/, ['test_startup_race']],
 ];
-const ALL = ['test_smoke', 'test_tapfix', 'test_plane', 'test_popup_x', 'test_slide', 'test_touch', 'test_turn', 'test_callouts',
+const ALL = ['test_smoke', 'test_tapfix', 'test_plane', 'test_rotation', 'test_popup_x', 'test_slide', 'test_touch', 'test_turn', 'test_callouts',
   'test_altrule', 'test_altdiag', 'test_dest', 'test_home', 'test_marker', 'test_gps_btn', 'test_fonts', 'test_sw', 'test_install',
   'test_buster', 'test_startup_race'];
 

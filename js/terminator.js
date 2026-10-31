@@ -144,7 +144,7 @@
         // Track-Up logic: Rotate the map beneath the stationary plane
         let rotationAngle = 0;
         if (STATE.view.trackUp) {
-            rotationAngle = -STATE.plane.hdg * Math.PI / 180;
+            rotationAngle = -planeCourseOnScreenDeg() * Math.PI / 180;
             ctx.rotate(rotationAngle);
             
             // Re-offset map origin to lock plane at center screen
